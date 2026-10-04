@@ -307,6 +307,15 @@ static void rpmb_dump_frame(u8 *data_frame)
  * Since it is static inline function, we cannot extern to use it.
  * For syncing block data, this is the only way.
  */
+/*
+ * selene bring-up: RPMB transfers from the TEE time out on this eMMC with
+ * the 4.19 CQHCI host path, and the switch back to the user partition then
+ * fails, leaving every later read/write failing until reboot. Refuse RPMB
+ * access unless explicitly enabled until the RPMB path is fixed.
+ */
+static bool allow_emmc_rpmb;
+module_param(allow_emmc_rpmb, bool, 0644);
+
 int emmc_rpmb_switch(struct mmc_card *card, struct emmc_rpmb_blk_data *md)
 {
 	int ret;
@@ -314,6 +323,11 @@ int emmc_rpmb_switch(struct mmc_card *card, struct emmc_rpmb_blk_data *md)
 
 	if (main_md->part_curr == md->part_type)
 		return 0;
+
+	if (md->part_type == EXT_CSD_PART_CONFIG_ACC_RPMB && !allow_emmc_rpmb) {
+		pr_warn_ratelimited("rpmb-mtk: eMMC RPMB access refused (allow_emmc_rpmb=0)\n");
+		return -EOPNOTSUPP;
+	}
 
 #if defined(CONFIG_MTK_EMMC_CQ_SUPPORT) || defined(CONFIG_MTK_EMMC_HW_CQ)
 	if (mmc_card_cmdq(card)) {

@@ -2676,11 +2676,25 @@ static int mmc_blk_alloc_part(struct mmc_card *card,
  * This will essentially just redirect the ioctl()s coming in over to
  * the main block device spawning the RPMB character device.
  */
+/*
+ * selene bring-up: RPMB transfers time out on this eMMC with the 4.19 host
+ * path and leave the card on the RPMB partition, so every later I/O fails.
+ * Refuse RPMB chardev ioctls unless explicitly allowed (see also
+ * rpmb-mtk's allow_emmc_rpmb).
+ */
+static bool allow_rpmb_ioctl;
+module_param(allow_rpmb_ioctl, bool, 0644);
+
 static long mmc_rpmb_ioctl(struct file *filp, unsigned int cmd,
 			   unsigned long arg)
 {
 	struct mmc_rpmb_data *rpmb = filp->private_data;
 	int ret;
+
+	if (!allow_rpmb_ioctl) {
+		pr_warn_ratelimited("mmcblk: RPMB ioctl refused (allow_rpmb_ioctl=0)\n");
+		return -EOPNOTSUPP;
+	}
 
 	switch (cmd) {
 	case MMC_IOC_CMD:
