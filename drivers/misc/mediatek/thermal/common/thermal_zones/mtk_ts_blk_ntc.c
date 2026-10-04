@@ -595,9 +595,9 @@ static int get_hw_bts_temp(void)
 
 	i = times;
 	while (i--) {
-		ret_value = iio_read_channel_processed(channel, &auxadc_voltage);
+		ret_value = iio_read_channel_raw(channel, &auxadc_voltage);
 		if (ret_value <= 0) {
-			printk(KERN_ERR"[%s] iio_read_channel_processed failed\n", __func__);
+			printk(KERN_ERR"[%s] iio_read_channel_raw failed\n", __func__);
 			return ret_value;
 		}
 		id_volt = (auxadc_voltage * 1500 / 4096);

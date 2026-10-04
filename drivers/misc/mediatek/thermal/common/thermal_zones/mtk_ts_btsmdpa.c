@@ -619,7 +619,7 @@ static int get_hw_btsmdpa_temp(void)
 #endif
 
 #if defined(CONFIG_MEDIATEK_MT6577_AUXADC)
-	ret = iio_read_channel_processed(thermistor_ch1, &val);
+	ret = iio_read_channel_raw(thermistor_ch1, &val);
 	mtkts_btsmdpa_dprintk("get_hw_btsmdpa_temp val=%d\n", val);
 
 	if (ret < 0) {
@@ -627,6 +627,10 @@ static int get_hw_btsmdpa_temp(void)
 		return ret;
 	}
 
+	/*
+	 * The scaling below expects the raw 12-bit code (4.14's "processed"
+	 * read returned it); 4.19's processed read is already in mV.
+	 */
 	/*val * 1500 / 4096*/
 	ret = (val * 1500) >> 12;
 #else
