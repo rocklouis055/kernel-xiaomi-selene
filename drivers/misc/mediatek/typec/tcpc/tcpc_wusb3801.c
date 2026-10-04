@@ -1223,6 +1223,8 @@ MODULE_DEVICE_TABLE(i2c, wusb3801_id_table);
 
 static const struct of_device_id rt_match_table[] = {
 	{.compatible = "mediatek,usb_type_c_wusb3801",},
+	/* selene: stock (signed) dtbo describes the chip with the generic binding */
+	{.compatible = "mediatek,usb_type_c",},
 	{},
 };
 
