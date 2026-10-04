@@ -518,6 +518,15 @@ config MTK_HIGH_FRAME_RATE
 	bool "high frame rate,for 90hz or 120hz display"
 	default n
 
+config MTK_DISP_MULTI_CONFIG_NUM
+	int "Number of display configs in the DynFPS multi-config table"
+	depends on MTK_HIGH_FRAME_RATE
+	default 4
+	help
+	  Size of struct multi_configs, which is part of the
+	  DISP_IOCTL_GET_MULTI_CONFIGS ioctl number, so it must match the
+	  vendor hwcomposer. Redmi 10 (selene) vendors are built with 2.
+
 config MTK_MT6382_BDG
 	bool "Support Bridge IC 6382"
 	help
