@@ -106,3 +106,13 @@
 / {
 #include "mediatek/bat_setting/selene_battery_prop.dtsi"
 };
+
+/*
+ * eMMC: no command queue (CQE). On selene's Samsung eMMC, commands issued
+ * outside the queue with CQE on (RPMB partition switch, vendor health
+ * commands) time out and leave every later command timing out. Stock ran
+ * without CQHCI (MTK's own HW CQ stack).
+ */
+&mmc0 {
+	/delete-property/ mediatek,cqhci;
+};
