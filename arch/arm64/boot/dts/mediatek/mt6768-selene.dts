@@ -1,0 +1,59 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * MT6768 base for selene (Redmi 10): the 4.19 donor base plus the
+ * Xiaomi/Huaqin board nodes that selene's overlay references. Node bodies are
+ * copied unchanged from the selene 4.14 mt6768.dts.
+ */
+#include "mt6768.dts"
+
+/ {
+    board_id: board_id {
+		compatible = "mediatek,board_id";
+	};
+
+	dsi_err_flag: dsi_err_flag {
+		compatible = "mediatek, dsi_err-flag";
+		status = "disabled";
+	};
+
+	flashlights_led191: flashlights_led191 {
+		compatible = "mediatek,flashlights_led191";
+		decouple = <0>;
+		channel@1 {
+			type = <0>;
+			ct = <0>;
+			part = <0>;
+		};
+		channel@2 {
+			type = <0>;
+			ct = <1>;
+			part = <0>;
+		};
+	};
+
+	maxim_ds28e16: maxim_ds28e16 {
+		compatible = "maxim,ds28e16";
+	};
+
+	onewire_gpio: onewire_gpio {
+		compatible = "xiaomi,onewire_gpio";
+	};
+};
+
+&pio {
+	reverse_high: reverse_high {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO91__FUNC_GPIO91>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+
+	reverse_low: reverse_low {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO91__FUNC_GPIO91>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+};
