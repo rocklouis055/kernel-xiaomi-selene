@@ -903,6 +903,21 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 		spin_unlock_irqrestore(&dev->req_lock, flags);
 
 	} else {
+		/*
+		 * The request maps skb->data only, but NETIF_F_SG lets the
+		 * stack hand us paged skbs (TCP sendpage/sendfile); flatten
+		 * them or the frags are never sent.
+		 */
+		if (skb_is_nonlinear(skb) && skb_linearize(skb)) {
+			dev_kfree_skb_any(skb);
+			dev->net->stats.tx_dropped++;
+			spin_lock_irqsave(&dev->req_lock, flags);
+			if (list_empty(&dev->tx_reqs))
+				netif_start_queue(net);
+			list_add(&req->list, &dev->tx_reqs);
+			spin_unlock_irqrestore(&dev->req_lock, flags);
+			return NETDEV_TX_OK;
+		}
 		length = skb->len;
 		req->buf = skb->data;
 		req->context = skb;
