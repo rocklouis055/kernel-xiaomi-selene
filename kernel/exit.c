@@ -1539,6 +1539,25 @@ end:
 	return retval;
 }
 
+/* Backport of upstream 5.4's P_PIDFD support for waitid(). */
+static struct pid *pidfd_get_pid(unsigned int fd)
+{
+	struct fd f;
+	struct pid *pid;
+
+	f = fdget(fd);
+	if (!f.file)
+		return ERR_PTR(-EBADF);
+
+	if (f.file->f_op != &pidfd_fops) {
+		fdput(f);
+		return ERR_PTR(-EBADF);
+	}
+	pid = get_pid(f.file->private_data);
+	fdput(f);
+	return pid;
+}
+
 static long kernel_waitid(int which, pid_t upid, struct waitid_info *infop,
 			  int options, struct rusage *ru)
 {
@@ -1567,11 +1586,19 @@ static long kernel_waitid(int which, pid_t upid, struct waitid_info *infop,
 		if (upid <= 0)
 			return -EINVAL;
 		break;
+	case P_PIDFD:
+		type = PIDTYPE_PID;
+		if (upid < 0)
+			return -EINVAL;
+		pid = pidfd_get_pid(upid);
+		if (IS_ERR(pid))
+			return PTR_ERR(pid);
+		break;
 	default:
 		return -EINVAL;
 	}
 
-	if (type < PIDTYPE_MAX)
+	if (type < PIDTYPE_MAX && which != P_PIDFD)
 		pid = find_get_pid(upid);
 
 	wo.wo_type	= type;
