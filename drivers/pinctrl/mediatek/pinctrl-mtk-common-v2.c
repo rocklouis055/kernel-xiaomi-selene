@@ -469,7 +469,7 @@ const struct dev_pm_ops mtk_eint_pm_ops_v2 = {
 	.resume_noirq = mtk_eint_resume,
 };
 
-int mtk_build_eint(struct mtk_pinctrl *hw, struct platform_device *pdev)
+static int __mtk_build_eint(struct mtk_pinctrl *hw, struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node, *node;
 	struct resource *res;
@@ -494,11 +494,15 @@ int mtk_build_eint(struct mtk_pinctrl *hw, struct platform_device *pdev)
 
 		hw->eint->base = devm_ioremap_resource(&pdev->dev, res);
 	} else {
-	#if (defined CONFIG_MACH_MT6739) || (defined CONFIG_MACH_MT6771)
+		/*
+		 * Prefer the explicit reg_base_eint phandle. A plain name lookup
+		 * returns the first node called "eint" anywhere in the tree, and
+		 * overlays can add unrelated "eint@N" nodes (selene's stock dtbo
+		 * does), which leaves EINT unmapped.
+		 */
 		node = of_parse_phandle(np, "reg_base_eint", 0);
-	#else
-		node = of_find_node_by_name(NULL, "eint");
-	#endif /* CONFIG_MACH_MT6739 */
+		if (!node)
+			node = of_find_node_by_name(NULL, "eint");
 		if (!node)
 			return -ENODEV;
 		hw->eint->base = of_iomap(node, 0);
@@ -524,6 +528,23 @@ int mtk_build_eint(struct mtk_pinctrl *hw, struct platform_device *pdev)
 	hw->eint->gpio_xlate = &mtk_eint_xt;
 
 	return mtk_eint_do_init(hw->eint);
+}
+
+int mtk_build_eint(struct mtk_pinctrl *hw, struct platform_device *pdev)
+{
+	int err = __mtk_build_eint(hw, pdev);
+
+	/*
+	 * __mtk_build_eint() allocates hw->eint before it can fail. Callers
+	 * check hw->eint for EINT support, so don't leave a half-initialised
+	 * one behind (it oopses in mtk_eint_set_debounce()).
+	 */
+	if (err && hw->eint) {
+		dev_err(&pdev->dev, "EINT init failed: %d, disabling EINT\n", err);
+		devm_kfree(hw->dev, hw->eint);
+		hw->eint = NULL;
+	}
+	return err;
 }
 EXPORT_SYMBOL_GPL(mtk_build_eint);
 
