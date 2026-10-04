@@ -23,6 +23,7 @@
 #endif
 
 #include "lcm_drv.h"
+#include "selene_lcm_gpio.h"
 /* Huaqin add for K19A-315 by feiwen at 2021/06/16 start */
 #include "../../../../input/touchscreen/mediatek/NT36672C/nt36xxx.h"
 /* Huaqin add for K19A-315 by feiwen at 2021/06/16 end */
@@ -139,11 +140,9 @@ static struct LCM_UTIL_FUNCS lcm_util;
 #define LCM_I2C_ID_NAME "I2C_LCD_BIAS"
 
 /* Huaqin add for HQ-123498 by caogaojie at 2021/05/08 start */
-static unsigned ENP = 490; //gpio165
-static unsigned ENN = 494; //gpio169
 /* Huaqin add for HQ-123498 by caogaojie at 2021/05/08 end */
-#define GPIO_LCD_BIAS_ENP   ENP
-#define GPIO_LCD_BIAS_ENN   ENN
+#define GPIO_LCD_BIAS_ENP   selene_pio_gpio(165)
+#define GPIO_LCD_BIAS_ENN   selene_pio_gpio(169)
 
 /* Huaqin add for HQ-132637 by liunianliang at 2021/05/04 start */
 extern bool nvt_gesture_flag;

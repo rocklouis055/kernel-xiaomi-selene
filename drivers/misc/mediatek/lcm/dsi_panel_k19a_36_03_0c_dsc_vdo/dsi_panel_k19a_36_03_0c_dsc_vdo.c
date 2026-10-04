@@ -23,6 +23,7 @@
 #endif
 
 #include "lcm_drv.h"
+#include "selene_lcm_gpio.h"
 #include "mtk_boot_common.h"
 #include <linux/hqsysfs.h>
 #ifdef BUILD_LK
@@ -124,11 +125,9 @@ static struct LCM_UTIL_FUNCS lcm_util;
 #define LCM_I2C_ID_NAME "I2C_LCD_BIAS"
 
 
-static unsigned ENP = 490; //gpio165
-static unsigned ENN = 494; //gpio169
 
-#define GPIO_LCD_BIAS_ENP   ENP
-#define GPIO_LCD_BIAS_ENN   ENN
+#define GPIO_LCD_BIAS_ENP   selene_pio_gpio(165)
+#define GPIO_LCD_BIAS_ENN   selene_pio_gpio(169)
 
 /* Huaqin add for HQ-148570 by jiangyue at 2021/10/15 start */
 extern bool fts_gesture_flag;
