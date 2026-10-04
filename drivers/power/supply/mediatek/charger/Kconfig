@@ -228,6 +228,13 @@ config CHARGER_MM8013
 	  mm8013 driver.
 	  Set to Yes if MM8013 is used.
 
+config CHARGER_BQ2589X_CHARGER
+	bool "TI BQ2589x charger (selene)"
+	depends on MTK_CHARGER
+	help
+	  Driver for the TI BQ25890/2/5 switching charger used on the
+	  Redmi 10 (selene), carried over from the selene 4.14 tree.
+
 config CHARGER_SYV690
 	bool "CHARGER_SYV690"
 	help

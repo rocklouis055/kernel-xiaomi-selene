@@ -217,9 +217,10 @@ obj-$(CONFIG_THERMAL) += mtk_ts_battery.o
 
 ifeq  ($(CONFIG_WT_FIRE_THERMAL_NTC), y)
 obj-$(CONFIG_THERMAL) += mtk_ts_firecpu.o
+endif
 obj-$(CONFIG_THERMAL) += mtk_ts_bts.o
 obj-$(CONFIG_THERMAL) += mtk_ts_btsmdpa.o
-endif
+obj-$(CONFIG_THERMAL) += mtk_ts_blk_ntc.o
 
 obj-$(CONFIG_THERMAL) += mtk_ts_btscharger.o
 obj-$(CONFIG_THERMAL) += mtk_ts_cpu_noBank.o
