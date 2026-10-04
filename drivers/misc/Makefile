@@ -65,3 +65,4 @@ obj-$(CONFIG_SIMTRAY_STATUS) += simtray.o
 obj-$(CONFIG_MI_MEMORY_SYSFS) 	+= mi-memory/
 #duyingying.wt,add,2023.02.16,adb proc/cpumaxfreq
 obj-$(CONFIG_MI_FS)		+= cpumaxfreq.o
+obj-$(CONFIG_HQ_SYSFS_SUPPORT)	+= hqsysfs/

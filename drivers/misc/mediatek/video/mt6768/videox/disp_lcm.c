@@ -1027,6 +1027,13 @@ void load_lcm_resources_from_DT(struct LCM_DRIVER *lcm_drv)
 }
 #endif
 
+/* Huaqin (selene): let the panel publish its info to hqsysfs */
+static void disp_lcm_set_hw_info(struct disp_lcm_handle *plcm)
+{
+	if (plcm && plcm->drv && plcm->drv->set_hw_info)
+		plcm->drv->set_hw_info();
+}
+
 struct disp_lcm_handle *disp_lcm_probe(char *plcm_name,
 	enum LCM_INTERFACE_ID lcm_id, int is_lcm_inited)
 {
@@ -1171,6 +1178,7 @@ struct disp_lcm_handle *disp_lcm_probe(char *plcm_name,
 		plcm->lcm_original_width = plcm->params->width;
 		plcm->lcm_original_height = plcm->params->height;
 		_dump_lcm_info(plcm);
+		disp_lcm_set_hw_info(plcm);
 		return plcm;
 	}
 

@@ -62,6 +62,10 @@
 #include "ddp_dsi.h"
 #include "ddp_disp_bdg.h"
 
+/* selene (Huaqin) ESD hooks used by the k19a panels and NT36672C touch. */
+bool esd_flag;
+bool g_trigger_disp_esd_recovery;
+
 /* For abnormal check */
 static struct task_struct *primary_display_check_task;
 /* used for blocking check task  */

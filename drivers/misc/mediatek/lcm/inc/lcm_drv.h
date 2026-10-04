@@ -1081,7 +1081,13 @@ struct LCM_DRIVER {
 		unsigned int from_level, unsigned int to_level, struct LCM_PARAMS *params);
 	bool (*dfps_need_send_cmd)(
 	unsigned int from_level, unsigned int to_level, struct LCM_PARAMS *params);
+	/* Huaqin (selene): publish panel info to hqsysfs */
+	void (*set_hw_info)(void);
 };
+
+/* selene (Huaqin) panel/touch ESD hooks, defined in videox/disp_recovery.c */
+extern bool esd_flag;
+extern bool g_trigger_disp_esd_recovery;
 
 /* LCM Driver Functions */
 /* ------------------------------------------------------------------------- */

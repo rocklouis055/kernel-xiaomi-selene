@@ -94,6 +94,8 @@ source "drivers/input/touchscreen/mediatek/NT36xxx/Kconfig"
 source "drivers/input/touchscreen/mediatek/NT36672C_SPI/Kconfig"
 source "drivers/input/touchscreen/mediatek/xiaomi/Kconfig"
 source "drivers/input/touchscreen/mediatek/focaltech_FT8720/Kconfig"
+source "drivers/input/touchscreen/mediatek/NT36672C/Kconfig"
+source "drivers/input/touchscreen/mediatek/focaltech_touch_k19a/Kconfig"
 
 config TOUCHSCREEN_MTK_GT9XX_LM
 	bool "GT9XX_LM for Mediatek package"

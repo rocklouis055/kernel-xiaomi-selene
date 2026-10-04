@@ -1291,6 +1291,15 @@ struct LCM_DRIVER *lcm_driver_list[] = {
 #if defined(DSI_PANEL_M19A_42_03_0B_DSC_VDO)
 	&dsi_panel_m19a_42_03_0b_dsc_vdo_lcm_drv,
 #endif
+#if defined(DSI_PANEL_K19A_36_02_0A_DSC_VDO)
+	&dsi_panel_k19a_36_02_0a_dsc_vdo_lcm_drv,
+#endif
+#if defined(DSI_PANEL_K19A_43_02_0B_DSC_VDO)
+	&dsi_panel_k19a_43_02_0b_dsc_vdo_lcm_drv,
+#endif
+#if defined(DSI_PANEL_K19A_36_03_0C_DSC_VDO)
+	&dsi_panel_k19a_36_03_0c_dsc_vdo_lcm_drv,
+#endif
 
 #if defined(VIRTUAL_DSI_VDO_DEFAULT)
 	&virtual_dsi_vdo_default_drv,
