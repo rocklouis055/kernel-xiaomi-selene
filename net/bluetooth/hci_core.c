@@ -824,8 +824,12 @@ static int hci_init4_req(struct hci_request *req, unsigned long opt)
 	if (hdev->commands[30] & 0x08)
 		hci_req_add(req, HCI_OP_GET_MWS_TRANSPORT_CONFIG, 0, NULL);
 
-	/* Check for Synchronization Train support */
-	if (lmp_sync_train_capable(hdev))
+	/* Check for Synchronization Train support. The MT6768 CONNSYS
+	 * controller sets the feature bit but answers this command with
+	 * "Unknown HCI Command", which would abort the whole init; the
+	 * parameters are only needed for Connectionless Slave Broadcast.
+	 */
+	if (lmp_sync_train_capable(hdev) && !IS_ENABLED(CONFIG_MACH_MT6768))
 		hci_req_add(req, HCI_OP_READ_SYNC_TRAIN_PARAMS, 0, NULL);
 
 	/* Enable Secure Connections if supported and configured */
