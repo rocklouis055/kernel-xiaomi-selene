@@ -2,3 +2,13 @@ config MTK_HWMON
 	bool "MTK HWMON Config"
 	help
 	  CONFIG_MTK_HWMON for sensor common util
+
+config MTK_SENSOR_EVENT_6WORDS
+	bool "Sensor misc events carry 6 data words"
+	depends on MTK_HWMON
+	help
+	  Older vendor sensor HALs (e.g. Redmi 10 / selene) read struct
+	  sensor_event from /dev/m_*_misc with 6 data words (36 bytes).
+	  This kernel defaults to 8 words (44 bytes); with an older HAL every
+	  event after the first is misparsed and no sensor data reaches
+	  Android clients.

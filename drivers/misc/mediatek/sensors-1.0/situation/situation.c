@@ -145,8 +145,10 @@ int sar_data_report_t(int32_t value[8], int64_t time_stamp)
 	event.word[3] = value[3];
 	event.word[4] = value[4];
 	event.word[5] = value[5];
+#if SENSOR_EVENT_WORDS > 6
 	event.word[6] = value[6];
 	event.word[7] = value[7];
+#endif
 
 	err = sensor_input_event(situation_context_obj->mdev.minor, &event);
 	if (cxt->ctl_context[index].situation_ctl.open_report_data != NULL &&
@@ -177,8 +179,10 @@ int sar_exception_data_report()
 	event.word[3] = (30000 << 16)|10000;         //ref diff|ref userful
 	event.word[4] = (30001 << 16)|(3 << 8)|3;    //ref average|top_state|bottom_state
 	event.word[5] = 0;
+#if SENSOR_EVENT_WORDS > 6
 	event.word[6] = 0;
 	event.word[7] = 0;
+#endif
 
 	err = sensor_input_event(situation_context_obj->mdev.minor, &event);
 	if (cxt->ctl_context[index].situation_ctl.open_report_data != NULL &&

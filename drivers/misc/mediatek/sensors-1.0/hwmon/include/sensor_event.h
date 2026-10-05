@@ -19,6 +19,12 @@ enum flushAction {
 	TEMP_ACTION,
 	TEST_ACTION,
 };
+#ifdef CONFIG_MTK_SENSOR_EVENT_6WORDS
+#define SENSOR_EVENT_WORDS 6
+#else
+#define SENSOR_EVENT_WORDS 8
+#endif
+
 struct sensor_event {
 	int64_t time_stamp;
 	int8_t handle;
@@ -26,7 +32,7 @@ struct sensor_event {
 	int8_t status;
 	int8_t reserved;
 	union {
-		int32_t word[8];
+		int32_t word[SENSOR_EVENT_WORDS];
 		int8_t byte[0];
 	};
 } __packed;
