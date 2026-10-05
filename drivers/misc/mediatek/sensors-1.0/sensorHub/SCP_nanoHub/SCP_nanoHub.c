@@ -1277,7 +1277,9 @@ static int sensor_send_timestamp_wake_locked(void)
 	req.set_config_req.action = SENSOR_HUB_SET_TIMESTAMP;
 	req.set_config_req.ap_timestamp = now_time;
 	req.set_config_req.arch_counter = arch_counter;
+#ifndef CONFIG_MTK_SENSORHUB_NO_AP_TS_SEC
 	req.set_config_req.ap_ts_sec = ts.tv_sec;
+#endif
 	pr_debug("send to scp sec = %lld", ts.tv_sec);
 	pr_debug("sync ap boottime=%lld\n", now_time);
 	len = sizeof(req.set_config_req);

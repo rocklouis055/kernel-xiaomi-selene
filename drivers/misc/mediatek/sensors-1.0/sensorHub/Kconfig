@@ -12,3 +12,12 @@ config CUSTOM_KERNEL_SENSORHUB
 #source "drivers/misc/mediatek/sensors-1.0/sensorHub/SCP_shf/Kconfig"
 
 source "drivers/misc/mediatek/sensors-1.0/sensorHub/nanohub/Kconfig"
+
+config MTK_SENSORHUB_NO_AP_TS_SEC
+	bool "SCP firmware without ap_ts_sec in SET_CONFIG requests"
+	depends on CUSTOM_KERNEL_SENSORHUB
+	help
+	  Older SCP sensor hub firmware (e.g. Redmi 10 / selene) expects
+	  SCP_SENSOR_HUB_SET_CONFIG_REQ without the trailing ap_ts_sec field.
+	  The request length is part of the IPI message, so a mismatch makes
+	  the firmware reject the sensor FIFO setup and no data is delivered.
