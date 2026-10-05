@@ -31,6 +31,13 @@
  * mt6768_mt6358_spk_amp_event()
  */
 #define EXT_SPK_AMP_W_NAME "Ext_Speaker_Amp"
+/* selene (Redmi 10): Awinic AW87559 or Foursemi FS1815N speaker amp */
+#include "../fs1815n/fsm_public.h"
+#include "../fs1815n/fsm-dev.h"
+#define EXT_RCV_AMP_W_NAME "Ext_Reciver_Amp"
+static const char *awinic = "awinic";
+static const char *foursemi = "foursemi";
+extern char *get_audio_pa_vendor(void);
 
 static const char *const mt6768_spk_type_str[] = {MTK_SPK_NOT_SMARTPA_STR,
 						  MTK_SPK_RICHTEK_RT5509_STR,
@@ -138,6 +145,105 @@ err_data:
 }
 #endif
 
+#if defined(CONFIG_SND_SOC_AW87559)
+static const char *const mode_function[] = { "Off", "Music", "Voice", "Fm", "Rcv" };
+static SOC_ENUM_SINGLE_EXT_DECL(aw87xxx_mode, mode_function);
+
+enum aw87xxx_scene_mode {
+	AW87XXX_OFF_MODE = 0,
+	AW87XXX_MUSIC_MODE = 1,
+	AW87XXX_VOICE_MODE = 2,
+	AW87XXX_FM_MODE = 3,
+	AW87XXX_RCV_MODE = 4,
+	AW87XXX_MODE_MAX = 5,
+};
+enum {
+	AW87XXX_LEFT_CHANNEL = 0,
+	AW87XXX_RIGHT_CHANNEL = 1,
+};
+
+extern unsigned char aw87xxx_show_current_mode(int32_t channel);
+extern int aw87xxx_audio_scene_load(uint8_t mode, int32_t channel);
+/*K19A code for WXYFB-991 by zhangpeng at 2021.3.18 end*/
+
+static int aw87559_mode_get(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	unsigned char current_mode;
+	current_mode = aw87xxx_show_current_mode(AW87XXX_LEFT_CHANNEL);
+	ucontrol->value.integer.value[0] = current_mode;
+	pr_debug("%s: get mode:%d\n", __func__, current_mode);
+	return 0;
+}
+
+static int aw87559_mode_set(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	int ret = 0;
+	unsigned char set_mode;
+	set_mode = ucontrol->value.integer.value[0];
+	ret = aw87xxx_audio_scene_load(set_mode, AW87XXX_LEFT_CHANNEL);
+	if (ret < 0) {
+		pr_err("%s: mode:%d set failed\n", __func__, set_mode);
+		return -EPERM;
+	}
+	pr_debug("%s: set mode:%d success", __func__, set_mode);
+	return 0;
+}
+
+static int aw87389_mode_get(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	unsigned char current_mode;
+	current_mode = aw87xxx_show_current_mode(AW87XXX_RIGHT_CHANNEL);
+	ucontrol->value.integer.value[0] = current_mode;
+	pr_debug("%s: get mode:%d\n", __func__, current_mode);
+	return 0;
+}
+
+static int aw87389_mode_set(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	int ret = 0;
+	unsigned char set_mode;
+	set_mode = ucontrol->value.integer.value[0];
+	ret = aw87xxx_audio_scene_load(set_mode, AW87XXX_RIGHT_CHANNEL);
+	if (ret < 0) {
+		pr_err("%s: mode:%d set failed\n", __func__, set_mode);
+		return -EPERM;
+	}
+	pr_debug("%s: set mode:%d success", __func__, set_mode);
+	return 0;
+}
+#endif
+
+static int rcv_amp_mode;
+static const char *rcv_amp_type_str[] = {"SPEAKER_MODE", "RECIEVER_MODE"};
+static const struct soc_enum rcv_amp_type_enum =
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(rcv_amp_type_str), rcv_amp_type_str);
+
+static int mt6768_rcv_amp_mode_get(struct snd_kcontrol *kcontrol,
+				   struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s() = %d\n", __func__, rcv_amp_mode);
+	ucontrol->value.integer.value[0] = rcv_amp_mode;
+	return 0;
+}
+
+static int mt6768_rcv_amp_mode_set(struct snd_kcontrol *kcontrol,
+				   struct snd_ctl_elem_value *ucontrol)
+{
+	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
+
+	if (ucontrol->value.enumerated.item[0] >= e->items)
+		return -EINVAL;
+
+	rcv_amp_mode = ucontrol->value.integer.value[0];
+	pr_debug("%s() = %d\n", __func__, rcv_amp_mode);
+	return 0;
+}
+/*K19A code for HQ-123483 by zhangpeng at 2021.3.22 end*/
+
 static int mt6768_spk_type_get(struct snd_kcontrol *kcontrol,
 			       struct snd_ctl_elem_value *ucontrol)
 {
@@ -169,20 +275,113 @@ static int mt6768_spk_i2s_in_type_get(struct snd_kcontrol *kcontrol,
 }
 
 static int mt6768_mt6358_spk_amp_event(struct snd_soc_dapm_widget *w,
+					struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_dapm_context *dapm = w->dapm;
+	struct snd_soc_card *card = dapm->card;
+
+	dev_dbg(card->dev, "%s(), event %d\n", __func__, event);
+
+	switch (event) {
+	case SND_SOC_DAPM_POST_PMU:
+		/* spk amp on control */
+/*K19A code for HQ-123483 by zhangpeng at 2021.3.22 start*/
+		if (strcmp((const char *)get_audio_pa_vendor(), awinic) == 0) {
+#if defined(CONFIG_SND_SOC_AW87559)
+			pr_debug("%s(), aw87559_audio_kspk()\n", __func__);
+			aw87xxx_audio_scene_load(AW87XXX_MUSIC_MODE, AW87XXX_LEFT_CHANNEL);
+#endif
+		} else if (strcmp((const char *)get_audio_pa_vendor(), foursemi) == 0) {
+#ifdef CONFIG_SND_SOC_FS1815N
+			pr_debug("%s(), fsm audio spk:music\n", __func__);
+			fsm_speaker_onn(FSM_SCENE_MUSIC);
+#endif
+		} else {
+			pr_err("Please check out start PA");
+		}
+/*K19A code for HQ-123483 by zhangpeng at 2021.3.22 end*/
+		break;
+	case SND_SOC_DAPM_PRE_PMD:
+		/* spk amp off control */
+/*K19A code for HQ-123483 by zhangpeng at 2021.3.22 start*/
+		if (strcmp((const char *)get_audio_pa_vendor(), awinic) == 0) {
+			#if defined(CONFIG_SND_SOC_AW87559)
+			pr_debug("%s(), aw87559_audio_off()\n", __func__);
+			aw87xxx_audio_scene_load(AW87XXX_OFF_MODE, AW87XXX_LEFT_CHANNEL);
+			#endif
+		} else if (strcmp((const char *)get_audio_pa_vendor(), foursemi) == 0) {
+#ifdef CONFIG_SND_SOC_FS1815N
+			pr_debug("%s(), fsm_audio_off\n", __func__);
+			fsm_speaker_off();
+#endif
+		} else {
+			pr_err("Please check out off PA");
+		}
+/*K19A code for HQ-123483 by zhangpeng at 2021.3.22 end*/
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+};
+
+/*K19A code for HQ-123483 by zhangpeng at 2021.3.22 start */
+static int mt6768_mt6358_rcv_amp_event(struct snd_soc_dapm_widget *w,
 				       struct snd_kcontrol *kcontrol,
 				       int event)
 {
 	struct snd_soc_dapm_context *dapm = w->dapm;
 	struct snd_soc_card *card = dapm->card;
 
-	dev_info(card->dev, "%s(), event %d\n", __func__, event);
+	dev_dbg(card->dev, "%s(), event %d\n", __func__, event);
 
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
 		/* spk amp on control */
+/*K19A code for WXYFB-1001 by zhangpeng at 2021.3.19 start*/
+		if (strcmp((const char *)get_audio_pa_vendor(), awinic) == 0) {
+#ifdef CONFIG_SND_SOC_AW87559
+			if (rcv_amp_mode) {
+				pr_debug("%s(), aw87xxx_audio_rcv \n", __func__);
+				aw87xxx_audio_scene_load(AW87XXX_RCV_MODE, AW87XXX_RIGHT_CHANNEL);
+			} else {
+				pr_debug("%s(), aw87xxx_audio_spk \n", __func__);
+				aw87xxx_audio_scene_load(AW87XXX_MUSIC_MODE, AW87XXX_RIGHT_CHANNEL);
+			};
+#endif
+		} else if (strcmp((const char *)get_audio_pa_vendor(), foursemi) == 0) {
+#ifdef CONFIG_SND_SOC_FS1815N
+			if (rcv_amp_mode) {
+				pr_err("%s(), fsm_audio rcv()\n", __func__);
+				fsm_speaker_onn(FSM_SCENE_RCV);
+			} else {
+				pr_err("%s(), fsm_audio spk:music\n", __func__);
+				fsm_speaker_onn(FSM_SCENE_MUSIC);
+			};
+#endif
+		} else {
+			pr_err("Please check out off PA");
+		}
+/*K19A code for WXYFB-1001 by zhangpeng at 2021.3.19 end*/
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
 		/* spk amp off control */
+/*K19A code for WXYFB-1001 by zhangpeng at 2021.3.19 start*/
+		if (strcmp((const char *)get_audio_pa_vendor(), awinic) == 0) {
+#ifdef CONFIG_SND_SOC_AW87559
+			pr_debug("%s(), aw87xxx_audio_off \n", __func__);
+			aw87xxx_audio_scene_load(AW87XXX_OFF_MODE, AW87XXX_RIGHT_CHANNEL);
+#endif
+		} else if (strcmp((const char *)get_audio_pa_vendor(), foursemi) == 0) {
+#ifdef CONFIG_SND_SOC_FS1815N
+			pr_debug("%s(), fsm audio off()\n", __func__);
+			fsm_speaker_off();
+#endif
+		} else {
+			pr_err("Please check out off PA");
+		}
+/*K19A code for WXYFB-1001 by zhangpeng at 2021.3.19 end*/
 		break;
 	default:
 		break;
@@ -193,23 +392,44 @@ static int mt6768_mt6358_spk_amp_event(struct snd_soc_dapm_widget *w,
 
 static const struct snd_soc_dapm_widget mt6768_mt6358_widgets[] = {
 	SND_SOC_DAPM_SPK(EXT_SPK_AMP_W_NAME, mt6768_mt6358_spk_amp_event),
+/*K19A code for HQ-123483 by zhangpeng at 2021.3.22 start*/
+	SND_SOC_DAPM_SPK(EXT_RCV_AMP_W_NAME, mt6768_mt6358_rcv_amp_event),// ALPS05007528
+/*K19A code for HQ-123483 by zhangpeng at 2021.3.22 end*/
 };
 
 static const struct snd_soc_dapm_route mt6768_mt6358_routes[] = {
 	{EXT_SPK_AMP_W_NAME, NULL, "LINEOUT L"},
+/*K19A code for HQ-123483 by zhangpeng at 2021.3.22 start*/
+	{EXT_RCV_AMP_W_NAME, NULL, "Receiver"},// ALPS05007528
+/*K19A code for HQ-123483 by zhangpeng at 2021.3.22 end*/
 	{EXT_SPK_AMP_W_NAME, NULL, "LINEOUT L HSSPK"},
 	{EXT_SPK_AMP_W_NAME, NULL, "Headphone L Ext Spk Amp"},
-	{EXT_SPK_AMP_W_NAME, NULL, "Headphone R Ext Spk Amp"},
+/*K19A code for HQ-123483 by zhangpeng at 2021.3.22 start*/
+	{EXT_RCV_AMP_W_NAME, NULL, "Headphone R Ext Spk Amp"},// ALPS05007528
+/*K19A code for HQ-123483 by zhangpeng at 2021.3.22 end*/
 };
 
 static const struct snd_kcontrol_new mt6768_mt6358_controls[] = {
 	SOC_DAPM_PIN_SWITCH(EXT_SPK_AMP_W_NAME),
+/*K19A code for HQ-123483 by zhangpeng at 2021.3.22 start*/
+	SOC_DAPM_PIN_SWITCH(EXT_RCV_AMP_W_NAME),// ALPS05007528
+	SOC_ENUM_EXT("RCV_AMP_MODE", rcv_amp_type_enum,
+		     mt6768_rcv_amp_mode_get, mt6768_rcv_amp_mode_set),// ALPS05007528
+/*K19A code for HQ-123483 by zhangpeng at 2021.3.22 end*/
 	SOC_ENUM_EXT("MTK_SPK_TYPE_GET", mt6768_spk_type_enum[0],
 		     mt6768_spk_type_get, NULL),
 	SOC_ENUM_EXT("MTK_SPK_I2S_OUT_TYPE_GET", mt6768_spk_type_enum[1],
 		     mt6768_spk_i2s_out_type_get, NULL),
 	SOC_ENUM_EXT("MTK_SPK_I2S_IN_TYPE_GET", mt6768_spk_type_enum[1],
 		     mt6768_spk_i2s_in_type_get, NULL),
+/*K19A code for HQ-123483 by zhangpeng at 2021.3.22 start*/
+#if defined(CONFIG_SND_SOC_AW87559)
+	SOC_ENUM_EXT("aw87xxx_rcv_switch",aw87xxx_mode ,
+			aw87389_mode_get, aw87389_mode_set),
+	SOC_ENUM_EXT("aw87xxx_spk_switch",aw87xxx_mode ,
+			aw87559_mode_get, aw87559_mode_set),
+#endif
+/*K19A code for HQ-123483 by zhangpeng at 2021.3.22 end*/
 };
 
 /*
@@ -658,7 +878,7 @@ static struct snd_soc_dai_link mt6768_mt6358_dai_links[] = {
 	{
 		.name = "I2S3",
 		.cpu_dai_name = "I2S3",
-#ifdef CONFIG_SND_SOC_FS16XX
+#ifdef CONFIG_SND_SOC_FS1815N
 		.codec_dai_name = "fs16xx-aif",
 		.codec_name = "fs16xx",
 #else
@@ -673,7 +893,7 @@ static struct snd_soc_dai_link mt6768_mt6358_dai_links[] = {
 	{
 		.name = "I2S0",
 		.cpu_dai_name = "I2S0",
-#ifdef CONFIG_SND_SOC_FS16XX
+#ifdef CONFIG_SND_SOC_FS1815N
 		.codec_dai_name = "fs16xx-aif",
 		.codec_name = "fs16xx",
 #else

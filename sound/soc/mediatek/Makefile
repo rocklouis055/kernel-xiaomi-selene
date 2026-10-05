@@ -162,3 +162,7 @@ else
   subdir-ccflags-y += -I$(src)/$(AUDIO_PLATFORM)
 endif
 endif
+
+# selene (Redmi 10) speaker amplifiers
+obj-$(CONFIG_SND_SOC_AW87559) += aw87559/
+obj-$(CONFIG_SND_SOC_FS1815N) += fs1815n/
