@@ -425,8 +425,18 @@ int pstore_mkfile(struct dentry *root, struct pstore_record *record)
 
         #ifdef CONFIG_PSTORE_LAST_KMSG
         if (record->type == PSTORE_TYPE_CONSOLE) {
-            console_buffer = record->buf;
-            console_bufsize = size;
+            /*
+             * Keep a private copy: the record is freed when its pstore file
+             * is unlinked (systemd-pstore does that at boot), and readers of
+             * /proc/last_kmsg (aee_aedv) then hit a use-after-free.
+             */
+            char *copy = kmemdup(record->buf, record->size, GFP_KERNEL);
+
+            if (copy) {
+                kfree(console_buffer);
+                console_buffer = copy;
+                console_bufsize = record->size;
+            }
         }
         #endif
 	return 0;
