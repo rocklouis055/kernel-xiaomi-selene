@@ -78,16 +78,6 @@
 	};
 };
 
-/*
- * fire waits for its charger's BC1.2 result (SDP/CDP) before entering USB
- * device mode. selene's bq2589x charger driver is not ported yet, so take the
- * device role from the Type-C sink attach instead.
- */
-&extcon_usb {
-	/* a boolean property: any value, even <0>, means "bypass" */
-	/delete-property/ mediatek,bypss-typec-sink;
-};
-
 / {
 	/* backlight NTC on AUXADC 4, read by mtk_ts_blk_ntc (selene 4.14) */
 	blk_thermal: blk_thermal {
