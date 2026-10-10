@@ -308,12 +308,14 @@ static void rpmb_dump_frame(u8 *data_frame)
  * For syncing block data, this is the only way.
  */
 /*
- * selene bring-up: RPMB transfers from the TEE time out on this eMMC with
- * the 4.19 CQHCI host path, and the switch back to the user partition then
- * fails, leaving every later read/write failing until reboot. Refuse RPMB
- * access unless explicitly enabled until the RPMB path is fixed.
+ * selene: with CQHCI enabled, RPMB transfers from the TEE timed out and the
+ * switch back to the user partition failed, leaving every later read/write
+ * failing until reboot. selene now runs the eMMC without CQHCI and RPMB works,
+ * so access is allowed by default; set allow_emmc_rpmb=0 to refuse it again.
+ * The TEE secure storage driver only probes RPMB once at boot, so refusing it
+ * makes every TA fail to load (TEEC_ERROR_ITEM_NOT_FOUND).
  */
-static bool allow_emmc_rpmb;
+static bool allow_emmc_rpmb = true;
 module_param(allow_emmc_rpmb, bool, 0644);
 
 int emmc_rpmb_switch(struct mmc_card *card, struct emmc_rpmb_blk_data *md)
