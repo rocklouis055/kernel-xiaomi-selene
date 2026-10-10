@@ -924,10 +924,21 @@ int ccu_load_bin(struct ccu_device_s *device)
 		goto EXIT;
 	}
 
-	ret = ccu_cert_check(firmware_p);
-	if (ret < 0) {
-		LOG_ERR("cert check failed: %d\n", ret);
-		goto EXIT;
+	/*
+	 * selene's vendor lib3a.ccu is a plain ELF without the signature
+	 * trailer (whose first word is the signed length); only verify
+	 * firmware that actually carries one.
+	 */
+	if (firmware_p->size > 0x110 &&
+	    *(uint32_t *)(firmware_p->data + firmware_p->size - 0x110) ==
+	    firmware_p->size - 0x110) {
+		ret = ccu_cert_check(firmware_p);
+		if (ret < 0) {
+			LOG_ERR("cert check failed: %d\n", ret);
+			goto EXIT;
+		}
+	} else {
+		LOG_INF_MUST("unsigned ccu firmware, skipping cert check\n");
 	}
 
 	ret = ccu_load_segments(firmware_p);
