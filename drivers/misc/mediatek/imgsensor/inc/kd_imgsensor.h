@@ -641,4 +641,29 @@ void KD_IMGSENSOR_PROFILE_I2C(char *tag, int trans_num);
 
 #define mDELAY(ms)     mdelay(ms)
 #define uDELAY(us)       udelay(us)
+
+/* selene (Redmi 10) sensors */
+#define GC02M1B_SENSOR_ID1                      (0x02e0 + 2)
+#define OV50C40_OFILM_MAIN_SENSOR_ID               0x565043
+#define SENSOR_DRVNAME_OV50C40_OFILM_MAIN_MIPI_RAW       "ov50c40_ofilm_main_mipi_raw"
+#define S5KJN1_OFILM_MAIN_SENSOR_ID                0x38e1
+#define SENSOR_DRVNAME_S5KJN1_OFILM_MAIN_MIPI_RAW        "s5kjn1_ofilm_main_mipi_raw"
+#define OV50C40_QTECH_MAIN_SENSOR_ID               (0x565043+1)
+#define SENSOR_DRVNAME_OV50C40_QTECH_MAIN_MIPI_RAW       "ov50c40_qtech_main_mipi_raw"
+#define OV8856_OFILM_FRONT_SENSOR_ID            0x885A
+#define SENSOR_DRVNAME_OV8856_OFILM_FRONT_MIPI_RAW			"ov8856_ofilm_front_mipi_raw"
+#define OV8856_AAC_FRONT_SENSOR_ID              0x885B
+#define SENSOR_DRVNAME_OV8856_AAC_FRONT_MIPI_RAW			"ov8856_aac_front_mipi_raw"
+#define SENSOR_DRVNAME_GC02M1B_SUNNY_MIPI_RAW   "gc02m1b_sunny_mipi_raw"
+#define OV02B1B_OFILM_SENSOR_ID                 0x002b
+#define SENSOR_DRVNAME_OV02B1B_OFILM_MIPI_RAW   "ov02b1b_ofilm_mipi_raw"
+#define GC02M1_MACRO_AAC_SENSOR_ID 0x02e0
+#define SENSOR_DRVNAME_GC02M1_MACRO_AAC_MIPI_RAW 	"gc02m1_macro_aac_mipi_raw"
+#define GC02M1_MACRO_SY_SENSOR_ID 0x02e1
+#define SENSOR_DRVNAME_GC02M1_MACRO_SY_MIPI_RAW 	"gc02m1_macro_sy_mipi_raw"
+#define IMX355_SUNNY_ULTRA_SENSOR_ID (0x355 + 1)
+#define SENSOR_DRVNAME_IMX355_SUNNY_ULTRA_MIPI_RAW      "imx355_sunny_ultra_mipi_raw"
+#define IMX355_AAC_ULTRA_SENSOR_ID 0x355
+#define SENSOR_DRVNAME_IMX355_AAC_ULTRA_MIPI_RAW        "imx355_aac_ultra_mipi_raw"
+
 #endif              /* _KD_IMGSENSOR_H */
