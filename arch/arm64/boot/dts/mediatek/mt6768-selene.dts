@@ -106,3 +106,8 @@
 &mmc0 {
 	/delete-property/ mediatek,cqhci;
 };
+
+/* selene's FPC1022 driver binds the fingerprint node (as in selene 4.14) */
+&goodix_fp {
+	compatible = "mediatek,fpc1022_irq", "mediatek,goodix-fp";
+};
