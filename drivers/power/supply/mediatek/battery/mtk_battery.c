@@ -108,8 +108,7 @@ static int battery_in_data[1] = { 0 };
 static int battery_out_data[1] = { 0 };
 static bool g_ADC_Cali;
 
-#define MAX_BAT_NUM   2
-static char* battery_name[MAX_BAT_NUM+1] = {"battery_NVT_5000mAh", "battery_COS_5000mAh", "BATTERY_NOT_STANDARD"};
+extern const char *fg_battery_type;
 
 static enum power_supply_property battery_props[] = {
 	POWER_SUPPLY_PROP_STATUS,
@@ -279,12 +278,18 @@ int get_battery_id_vol(struct platform_device *dev)
 	int val = 0;
 	int ret = 0;
 
-	gm.bat_id = iio_channel_get(&dev->dev, "battery_id");
+	/* selene's DT names the AUXADC channel "batteryID-channel" */
+	gm.bat_id = iio_channel_get(&dev->dev, "batteryID-channel");
+	if (IS_ERR_OR_NULL(gm.bat_id))
+		gm.bat_id = iio_channel_get(&dev->dev, "battery_id");
 
 	if(!IS_ERR_OR_NULL(gm.bat_id)){
-		ret = iio_read_channel_processed(gm.bat_id, &val);
+		/* raw 12-bit AUXADC, 1.5V full scale -> uV (as selene stock) */
+		ret = iio_read_channel_raw(gm.bat_id, &val);
 		if(ret < 0)
-		bm_err("[%s]real fail,ret = %d\n", __func__, ret);
+			bm_err("[%s]real fail,ret = %d\n", __func__, ret);
+		else
+			val = (val * 1500 / 4096) * 1000;
 	}
 	bm_err("[%s]battery_vol = %d\n", __func__, val);
 	return val;
@@ -576,9 +581,13 @@ static int battery_get_property(struct power_supply *psy,
 		val->intval = battery_get_bat_avg_current() * 100;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL:
-		val->intval =
-			fg_table_cust_data.fg_profile[gm.battery_id].q_max
-			* 1000;
+		/* learned capacity, as selene stock (uAh) */
+		if (gm.algo_qmax > 0 && gm.aging_factor > 0)
+			val->intval = gm.algo_qmax * gm.aging_factor / 100;
+		else
+			val->intval =
+				fg_table_cust_data.fg_profile[gm.battery_id].q_max
+				* 1000;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_COUNTER:
 		val->intval = gm.ui_soc *
@@ -633,7 +642,7 @@ static int battery_get_property(struct power_supply *psy,
 			val->intval = charger_manager_get_prop_system_temp_level_max();
 			break ;
 	case POWER_SUPPLY_PROP_BATTERY_TYPE:
-			val->strval = battery_name[gm.battery_id];
+			val->strval = fg_battery_type;
 			break ;
 
 	default:

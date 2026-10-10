@@ -703,40 +703,47 @@ bool __attribute__ ((weak)) mt_usb_is_device(void)
 /* custom setting */
 /* ============================================================ */
 #ifdef MTK_GET_BATTERY_ID_BY_AUXADC
-#define MAX_BAT_NUM   2
+/*
+ * selene stock (K19A) battery ID ranges, in uV. On this board config the
+ * stock kernel maps the SWD cell to profile 2 (profiles come from the DT).
+ */
 struct bat_id_vol_range {
 	int low;
 	int high;
+	int id;
+	const char *name;
 };
 
-struct bat_id_vol_range bat_id_vol_table[MAX_BAT_NUM] = {{393,500},{532,667}};
+static const struct bat_id_vol_range bat_id_vol_table[] = {
+	{  686945,  759255, 2, "battery_SWD_5000mAh" },
+	{  848730,  938070, 1, "battery_COS_5000mAh" },
+	{ 1295800, 1432200, 3, "battery_SWD2_5000mAh" },
+};
+
+const char *fg_battery_type = "BATTERY_NOT_STANDARD";
 
 void fgauge_get_profile_id(void)
 {
 	int i;
 
-	for(i = 0; i < MAX_BAT_NUM; i++){
-		if(gm.battery_id_vol > bat_id_vol_table[i].low && gm.battery_id_vol < bat_id_vol_table[i].high)
+	/* unknown cell: keep profile 2, which is what the old code ended on */
+	gm.battery_id = 2;
+	fg_battery_type = "BATTERY_NOT_STANDARD";
+	for (i = 0; i < ARRAY_SIZE(bat_id_vol_table); i++) {
+		if (gm.battery_id_vol >= bat_id_vol_table[i].low &&
+		    gm.battery_id_vol <= bat_id_vol_table[i].high) {
+			gm.battery_id = bat_id_vol_table[i].id;
+			fg_battery_type = bat_id_vol_table[i].name;
+			hardwareinfo_set_prop(HARDWARE_BATTERY_ID,
+					      bat_id_vol_table[i].name);
 			break;
+		}
 	}
-
-	switch(i){
-	case 0:
-		hardwareinfo_set_prop(HARDWARE_BATTERY_ID, "battery_NVT_5000mAh");
-		bm_err("[%s]switch to battery_id = %d\n", __func__, i);
-		break;
-	case 1:
-		hardwareinfo_set_prop(HARDWARE_BATTERY_ID, "battery_COS_5000mAh");
-		bm_err("[%s]switch to battery_id = %d\n", __func__, i);
-		break;
-	default:
+	if (i == ARRAY_SIZE(bat_id_vol_table))
 		hardwareinfo_set_prop(HARDWARE_BATTERY_ID, "unknown_battery");
-		bm_err("[%s]switch to battery_id = %d\n", __func__, i);
-		break;
-	}
-	bm_err("[%s]battery_id = %d\n",__func__, i);
 
-	gm.battery_id  = i;
+	bm_err("[%s]battery_id = %d (%d uV)\n", __func__, gm.battery_id,
+	       gm.battery_id_vol);
 }
 #elif defined(MTK_GET_BATTERY_ID_BY_GPIO)
 void fgauge_get_profile_id(void)
