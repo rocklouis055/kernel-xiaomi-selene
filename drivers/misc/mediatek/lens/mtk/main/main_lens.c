@@ -196,11 +196,23 @@ static void camaf_power_init(void)
 		lens_device->of_node = node;
 
 		if (vcamaf_ldo == NULL) {
-			vcamaf_ldo = regulator_get(lens_device, CAMAF_PMIC);
+			struct device_node *hw_node = of_find_compatible_node(
+				NULL, NULL, "mediatek,camera_hw");
+
+			/* selene: AF VDD is vcamaf-supply (vldo28) on camera_hw */
+			if (hw_node) {
+				lens_device->of_node = hw_node;
+				vcamaf_ldo = regulator_get(lens_device, "vcamaf");
+				lens_device->of_node = node;
+			} else {
+				vcamaf_ldo = regulator_get(lens_device, CAMAF_PMIC);
+			}
 			if (IS_ERR(vcamaf_ldo)) {
 				ret = PTR_ERR(vcamaf_ldo);
 				vcamaf_ldo = NULL;
 				LOG_INF("cannot get regulator\n");
+			} else {
+				regulator_set_voltage(vcamaf_ldo, 2800000, 2800000);
 			}
 		}
 
@@ -242,6 +254,7 @@ static void camaf_power_on(void)
 	if (vcamaf_ldo) {
 		ret = regulator_enable(vcamaf_ldo);
 		LOG_INF("regulator enable (%d)\n", ret);
+		usleep_range(5000, 5500);
 	}
 
 	if (vcamaf_pio && vcamaf_pio_on) {
