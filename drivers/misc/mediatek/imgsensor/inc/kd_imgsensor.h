@@ -643,6 +643,21 @@ void KD_IMGSENSOR_PROFILE_I2C(char *tag, int trans_num);
 #define uDELAY(us)       udelay(us)
 
 /* selene (Redmi 10) sensors */
+#define GC02M1B_SUNNY_SENSOR_INDIA_ID    (0x02e0 + 5)
+#define GC02M1_MACRO_AAC_SENSOR_INDIA_ID 0x02e3
+#define GC02M1_MACRO_SY_SENSOR_INDIA_ID 0x02e4
+#define IMX355_AAC_ULTRA_SENSOR_CN_ID (0x355 + 5)
+#define IMX355_AAC_ULTRA_SENSOR_INDIA_ID 0x358
+#define IMX355_SUNNY_ULTRA_SENSOR_CN_ID (0x355 + 6)
+#define IMX355_SUNNY_ULTRA_SENSOR_INDIA_ID (0x355 + 4)
+#define OV02B1B_OFILM_SENSOR_INDIA_ID                 0x002e
+#define OV50C40_OFILM_MAIN_SENSOR_INDIA_ID               0x565046
+#define OV50C40_QTECH_MAIN_SENSOR_CN_ID             (0x565044 +5)
+#define OV50C40_QTECH_MAIN_SENSOR_INDIA_ID               (0x565043+4)
+#define OV8856_AAC_FRONT_SENSOR_INDIA_ID   0x885E
+#define OV8856_OFILM_FRONT_SENSOR_INDIA_ID 0x885D
+#define S5KJN1_OFILM_MAIN_SENSOR_CN_ID             (0x38e1 + 5)
+#define S5KJN1_OFILM_MAIN_SENSOR_INDIA_ID                0x38e4
 #define GC02M1B_SENSOR_ID1                      (0x02e0 + 2)
 #define OV50C40_OFILM_MAIN_SENSOR_ID               0x565043
 #define SENSOR_DRVNAME_OV50C40_OFILM_MAIN_MIPI_RAW       "ov50c40_ofilm_main_mipi_raw"

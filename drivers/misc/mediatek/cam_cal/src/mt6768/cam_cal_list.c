@@ -9,7 +9,40 @@
 #include "eeprom_i2c_custom_driver.h"
 #include "kd_imgsensor.h"
 
+/* selene (Redmi 10) OTP readers, in its sensor drivers */
+extern unsigned int gc02m1_read_otp_info(struct i2c_client *client,
+	unsigned int addr, unsigned char *data, unsigned int size);
+extern unsigned int ov02b1b_read_otp_info(struct i2c_client *client,
+	unsigned int addr, unsigned char *data, unsigned int size);
+
 struct stCAM_CAL_LIST_STRUCT g_camCalList[] = {
+	/* selene (Redmi 10) */
+	{OV50C40_OFILM_MAIN_SENSOR_ID, 0xA2, Common_read_region},
+	{S5KJN1_OFILM_MAIN_SENSOR_ID, 0xA2, Common_read_region},
+	{OV50C40_QTECH_MAIN_SENSOR_ID, 0xA2, Common_read_region},
+	{GC02M1_MACRO_AAC_SENSOR_ID, 0xA4, Common_read_region},
+	{GC02M1_MACRO_SY_SENSOR_ID, 0xA4, Common_read_region},
+	{IMX355_SUNNY_ULTRA_SENSOR_ID, 0xA0, Common_read_region},
+	{IMX355_AAC_ULTRA_SENSOR_ID, 0xA0, Common_read_region},
+	{OV8856_OFILM_FRONT_SENSOR_ID, 0xA2, Common_read_region},
+	{OV8856_AAC_FRONT_SENSOR_ID, 0xA2, Common_read_region},
+	{GC02M1B_SENSOR_ID1, 0xA2, gc02m1_read_otp_info},
+	{OV02B1B_OFILM_SENSOR_ID, 0xA2, ov02b1b_read_otp_info},
+	{OV50C40_OFILM_MAIN_SENSOR_INDIA_ID, 0xA2, Common_read_region},
+	{S5KJN1_OFILM_MAIN_SENSOR_INDIA_ID, 0xA2, Common_read_region},
+	{OV50C40_QTECH_MAIN_SENSOR_INDIA_ID, 0xA2, Common_read_region},
+	{GC02M1_MACRO_AAC_SENSOR_INDIA_ID, 0xA4, Common_read_region},
+	{GC02M1_MACRO_SY_SENSOR_INDIA_ID, 0xA4, Common_read_region},
+	{IMX355_SUNNY_ULTRA_SENSOR_INDIA_ID, 0xA0, Common_read_region},
+	{IMX355_AAC_ULTRA_SENSOR_INDIA_ID, 0xA0, Common_read_region},
+	{OV8856_OFILM_FRONT_SENSOR_INDIA_ID, 0xA2, Common_read_region},
+	{OV8856_AAC_FRONT_SENSOR_INDIA_ID, 0xA2, Common_read_region},
+	{GC02M1B_SUNNY_SENSOR_INDIA_ID, 0xA2, gc02m1_read_otp_info},
+	{OV02B1B_OFILM_SENSOR_INDIA_ID, 0xA2, ov02b1b_read_otp_info},
+	{S5KJN1_OFILM_MAIN_SENSOR_CN_ID, 0xA2, Common_read_region},
+	{OV50C40_QTECH_MAIN_SENSOR_CN_ID, 0xA2, Common_read_region},
+	{IMX355_SUNNY_ULTRA_SENSOR_CN_ID, 0xA0, Common_read_region},
+	{IMX355_AAC_ULTRA_SENSOR_CN_ID, 0xA0, Common_read_region},
 	
 	{S5KJNS_SUNNY_SENSOR_ID, 0xA2, Common_read_region},
 	{OV50D40_TRULY_SENSOR_ID, 0xA2, Common_read_region},
