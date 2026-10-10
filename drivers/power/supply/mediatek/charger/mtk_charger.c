@@ -2214,6 +2214,18 @@ static int mtk_charger_parse_dt(struct charger_manager *info,
 		info->algorithm_name = "SwitchCharging";
 	}
 
+	/*
+	 * selene's stock dtbo (applied by LK on top of our DT) asks for
+	 * DualSwitchCharging, but it has a single charger (bq2589x). Without
+	 * the dual algorithm built in, do_algorithm stays NULL and nothing
+	 * ever programs the charge current.
+	 */
+	if (!IS_ENABLED(CONFIG_MTK_DUAL_CHARGER_SUPPORT) &&
+	    strcmp(info->algorithm_name, "DualSwitchCharging") == 0) {
+		chr_err("DualSwitchCharging not built, use SwitchCharging2\n");
+		info->algorithm_name = "SwitchCharging2";
+	}
+
 	if (strcmp(info->algorithm_name, "SwitchCharging2") == 0) {
 		chr_err("found SwitchCharging2\n");
 		mtk_switch_charging_init2(info);
@@ -2335,6 +2347,11 @@ static int mtk_charger_parse_dt(struct charger_manager *info,
 			AC_CHARGER_CURRENT);
 		info->data.ac_charger_current = AC_CHARGER_CURRENT;
 	}
+
+	if (of_property_read_u32(np, "hvdcp_charger_current", &val) >= 0)
+		info->data.hvdcp_charger_current = val;
+	else
+		info->data.hvdcp_charger_current = 0;
 
 	if (of_property_read_u32(np, "pd_charger_current", &val) >= 0)
 		info->data.pd_charger_current = val;

@@ -173,6 +173,7 @@ struct charger_custom_data {
 	int usb_unlimited_current;
 	int ta_ac_charger_current;
 	int pd_charger_current;
+	int hvdcp_charger_current;
 
 	/* dynamic mivr */
 	int min_charger_voltage_1;

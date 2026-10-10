@@ -255,6 +255,18 @@ static void swchg_select_charging_current_limit(struct charger_manager *info)
 				info->data.ac_charger_input_current;
 		pdata->charging_current_limit =
 				info->data.ac_charger_current;
+		/*
+		 * bq2589x reports a QC2 (HVDCP) adapter as STANDARD_CHARGER;
+		 * once VBUS has gone up to 9V use selene's stock HVDCP limits
+		 * (input 2A, charge hvdcp_charger_current).
+		 */
+		if (info->data.hvdcp_charger_current > 0 &&
+		    battery_get_vbus() > 7200) {
+			pdata->input_current_limit =
+				min(pdata->input_current_limit, 2000000);
+			pdata->charging_current_limit =
+				info->data.hvdcp_charger_current;
+		}
 		mtk_pe20_set_charging_current(info,
 					&pdata->charging_current_limit,
 					&pdata->input_current_limit);
