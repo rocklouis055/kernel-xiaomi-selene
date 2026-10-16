@@ -869,7 +869,17 @@ static int snd_pcm_sw_params(struct snd_pcm_substream *substream,
 	runtime->period_step = params->period_step;
 	runtime->control->avail_min = params->avail_min;
 	runtime->start_threshold = params->start_threshold;
-	runtime->stop_threshold = params->stop_threshold;
+	/*
+	 * selene: the vendor audio HAL asks for "never stop" with a 32-bit
+	 * UINT_MAX stop_threshold. Under 64-bit users (pulseaudio's droid
+	 * module) that is below the 64-bit boundary, so the hostless speech
+	 * playback stream fails to start with -EPIPE and calls have no audio.
+	 * Treat it as the boundary, which is what it means.
+	 */
+	if (params->stop_threshold == UINT_MAX && runtime->boundary > UINT_MAX)
+		runtime->stop_threshold = runtime->boundary;
+	else
+		runtime->stop_threshold = params->stop_threshold;
 	runtime->silence_threshold = params->silence_threshold;
 	runtime->silence_size = params->silence_size;
         params->boundary = runtime->boundary;
