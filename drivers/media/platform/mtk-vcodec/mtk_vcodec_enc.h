@@ -43,6 +43,8 @@ struct mtk_video_enc_buf {
 	bool has_meta;
 	unsigned int qpmap;
 	struct dma_buf *meta_dma;
+	/* selene: dma-bufs exported for MMAP planes, see venc_plane_dmabuf() */
+	struct dma_buf *exp_dmabuf[VIDEO_MAX_PLANES];
 };
 
 extern const struct v4l2_ioctl_ops mtk_venc_ioctl_ops;

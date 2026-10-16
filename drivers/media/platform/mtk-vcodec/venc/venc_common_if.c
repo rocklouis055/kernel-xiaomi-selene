@@ -164,7 +164,9 @@ static int venc_encode_frame(struct venc_inst *inst,
 		inst->vsi->venc.roimap = frm_buf->roimap;
 
 		mtk_vcodec_debug(inst, "ROI: 0x%X", inst->vsi->venc.roimap);
+#if !VENC_VCU_ABI_LEGACY
 		mtk_vcodec_debug(inst, "QP: 0x%X", inst->vsi->venc.qpmap);
+#endif
 	}
 	ret = vcu_enc_encode(&inst->vcu_inst, VENC_BS_MODE_FRAME, frm_buf,
 						 bs_buf, bs_size);
@@ -438,7 +440,11 @@ static int venc_get_param(unsigned long handle,
 	case VENC_GET_PARAM_REFBUF_FRAME_NUM: {
 		if (inst->vsi == NULL || out == NULL)
 			return -EINVAL;
+#if VENC_VCU_ABI_LEGACY
+		*(int *)out = 0;
+#else
 		*(int *)out = inst->vsi->config.maxrefbufFrameNum;
+#endif
 		break;
 	}
 
@@ -490,6 +496,7 @@ static int venc_set_param(unsigned long handle,
 		inst->vsi->config.b_qp = enc_prm->b_qp;
 		inst->vsi->config.svp_mode = enc_prm->svp_mode;
 		inst->vsi->config.tsvc = enc_prm->tsvc;
+#if !VENC_VCU_ABI_LEGACY
 		inst->vsi->config.max_qp = enc_prm->max_qp;
 		inst->vsi->config.min_qp = enc_prm->min_qp;
 		inst->vsi->config.i_p_qp_delta = enc_prm->i_p_qp_delta;
@@ -499,13 +506,16 @@ static int venc_set_param(unsigned long handle,
 				enc_prm->frame_level_qp;
 		}
 		inst->vsi->config.dummynal = enc_prm->dummynal;
+#endif
 
 		if (enc_prm->color_desc) {
 			memcpy(&inst->vsi->config.color_desc,
 				enc_prm->color_desc,
 				sizeof(struct mtk_color_desc));
 		}
+#if !VENC_VCU_ABI_LEGACY
 		inst->vsi->config.maxrefpnum = enc_prm->maxrefpnum;
+#endif
 
 		if (inst->vcu_inst.id == IPI_VENC_H264 ||
 			inst->vcu_inst.id == IPI_VENC_HYBRID_H264) {

@@ -557,9 +557,11 @@ int vcu_enc_encode(struct venc_vcu_inst *vcu, unsigned int bs_mode,
 			vsi->meta_addr = 0;
 		}
 
+#if !VENC_VCU_ABI_LEGACY
 		if (frm_buf->qpmap != 0) {
 			out.qpmap = frm_buf->qpmap;
 		}
+#endif
 
 		mtk_vcodec_debug(vcu, " num_planes = %d input (dmabuf:%lx fd:%x), metafd %x metasize %d %llx",
 			frm_buf->num_planes,

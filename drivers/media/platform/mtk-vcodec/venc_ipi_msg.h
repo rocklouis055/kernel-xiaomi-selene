@@ -6,6 +6,14 @@
 #ifndef _VENC_IPI_MSG_H_
 #define _VENC_IPI_MSG_H_
 
+/*
+ * selene: VENC_VCU_ABI_LEGACY=1 gives the structs shared with the VCU daemon
+ * (vpud) the older 4.14 driver layout (no svp_is_hal_secure_handle/QP fields
+ * in venc_vcu_config, no meta/qpmap in the encode message). The device's
+ * vpud understands the newer parameter set, so the donor layout is used.
+ */
+#define VENC_VCU_ABI_LEGACY 0
+
 #include <linux/videodev2.h>
 #include "vcodec_ipi_msg.h"
 
@@ -219,9 +227,11 @@ struct venc_ap_ipi_msg_enc {
 	__s16 bs_fd;
 	__u8 fb_num_planes;
 	__u8 bs_mode;
+#if !VENC_VCU_ABI_LEGACY
 	__u32 meta_size;
 	__s16 meta_fd;
 	__u32 qpmap;
+#endif
 };
 
 /**
@@ -406,8 +416,11 @@ struct venc_vcu_config {
 	__u32 p_qp;
 	__u32 b_qp;
 	__u32 svp_mode;
+#if !VENC_VCU_ABI_LEGACY
 	__u32 svp_is_hal_secure_handle;
+#endif
 	__u32 tsvc;
+#if !VENC_VCU_ABI_LEGACY
 	__u32 max_qp;
 	__u32 min_qp;
 	__u32 i_p_qp_delta;
@@ -416,6 +429,7 @@ struct venc_vcu_config {
 	__u32 maxrefpnum;
 	__u32 maxrefbufFrameNum;
 	__u32 dummynal;
+#endif
 };
 
 /**
@@ -452,7 +466,9 @@ struct venc_info {
 	__u32 index;
 	__u64 timestamp;
 	__u32 roimap;
+#if !VENC_VCU_ABI_LEGACY
 	__u32 qpmap;
+#endif
 };
 
 /**

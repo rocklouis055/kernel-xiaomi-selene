@@ -8,6 +8,8 @@
 #include <media/videobuf2-dma-contig.h>
 #include <soc/mediatek/smi.h>
 #include <linux/delay.h>
+#include <linux/dma-buf.h>
+#include <linux/fcntl.h>
 #include <linux/semaphore.h>
 
 #include "mtk_vcodec_drv.h"
@@ -1755,6 +1757,45 @@ static int vb2ops_venc_buf_prepare(struct vb2_buffer *vb)
 	return 0;
 }
 
+/*
+ * selene: the VCU daemon (vpud) receives every buffer as a dma-buf fd, so a
+ * plane needs a dma-buf. Android's codec HAL always imports DMABUF memory,
+ * but V4L2 users such as ffmpeg and GStreamer use MMAP buffers, whose
+ * planes[].dbuf is NULL; vpud then has no bitstream buffer ("pbs_buf is
+ * null") and the encode fails with -EINVAL. Export a dma-buf for such a
+ * plane once and keep it with the buffer until vb2ops_venc_buf_cleanup().
+ */
+static struct dma_buf *venc_plane_dmabuf(struct vb2_buffer *vb, unsigned int p)
+{
+	struct mtk_video_enc_buf *buf = container_of(to_vb2_v4l2_buffer(vb),
+					struct mtk_video_enc_buf, vb);
+	struct dma_buf *dbuf;
+
+	if (vb->planes[p].dbuf || vb->memory != VB2_MEMORY_MMAP ||
+	    p >= VIDEO_MAX_PLANES || !vb->vb2_queue->mem_ops->get_dmabuf)
+		return vb->planes[p].dbuf;
+	if (!buf->exp_dmabuf[p]) {
+		dbuf = vb->vb2_queue->mem_ops->get_dmabuf(
+				vb->planes[p].mem_priv, O_RDWR);
+		buf->exp_dmabuf[p] = IS_ERR_OR_NULL(dbuf) ? NULL : dbuf;
+	}
+	return buf->exp_dmabuf[p];
+}
+
+static void vb2ops_venc_buf_cleanup(struct vb2_buffer *vb)
+{
+	struct mtk_video_enc_buf *buf = container_of(to_vb2_v4l2_buffer(vb),
+					struct mtk_video_enc_buf, vb);
+	unsigned int p;
+
+	for (p = 0; p < VIDEO_MAX_PLANES; p++) {
+		if (buf->exp_dmabuf[p]) {
+			dma_buf_put(buf->exp_dmabuf[p]);
+			buf->exp_dmabuf[p] = NULL;
+		}
+	}
+}
+
 static void vb2ops_venc_buf_finish(struct vb2_buffer *vb)
 {
 	struct mtk_vcodec_ctx *ctx = vb2_get_drv_priv(vb->vb2_queue);
@@ -1967,6 +2008,7 @@ static const struct vb2_ops mtk_venc_vb2_ops = {
 	.wait_prepare           = vb2_ops_wait_prepare,
 	.wait_finish            = vb2_ops_wait_finish,
 	.buf_finish             = vb2ops_venc_buf_finish,
+	.buf_cleanup            = vb2ops_venc_buf_cleanup,
 	.start_streaming        = vb2ops_venc_start_streaming,
 	.stop_streaming         = vb2ops_venc_stop_streaming,
 };
@@ -1994,7 +2036,7 @@ static int mtk_venc_encode_header(void *priv)
 	bs_buf->va = vb2_plane_vaddr(dst_buf, 0);
 	bs_buf->dma_addr = vb2_dma_contig_plane_dma_addr(dst_buf, 0);
 	bs_buf->size = (size_t)dst_buf->planes[0].length;
-	bs_buf->dmabuf = dst_buf->planes[0].dbuf;
+	bs_buf->dmabuf = venc_plane_dmabuf(dst_buf, 0);
 
 	mtk_v4l2_debug(1,
 		       "[%d] buf id=%d va=0x%p dma_addr=0x%llx size=%zu",
@@ -2433,7 +2475,7 @@ static void mtk_venc_worker(struct work_struct *work)
 	pbs_buf->va = vb2_plane_vaddr(dst_buf, 0);
 	pbs_buf->dma_addr = vb2_dma_contig_plane_dma_addr(dst_buf, 0);
 	pbs_buf->size = (size_t)dst_buf->planes[0].length;
-	pbs_buf->dmabuf = dst_buf->planes[0].dbuf;
+	pbs_buf->dmabuf = venc_plane_dmabuf(dst_buf, 0);
 
 	if (src_buf_info->lastframe == EOS) {
 		src_buf_info->lastframe = NON_EOS;
@@ -2540,7 +2582,7 @@ static void mtk_venc_worker(struct work_struct *work)
 				(size_t)(src_buf->planes[i].bytesused-
 				src_buf->planes[i].data_offset);
 		pfrm_buf->fb_addr[i].dmabuf =
-				src_buf->planes[i].dbuf;
+				venc_plane_dmabuf(src_buf, i);
 		pfrm_buf->fb_addr[i].data_offset =
 				src_buf->planes[i].data_offset;
 
