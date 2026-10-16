@@ -46,5 +46,8 @@ void mtk_dma_contig_clear_max_seg_size(struct device *dev);
 void mtk_dma_contig_set_secure_mode(struct device *dev, int secure_mode);
 
 extern const struct vb2_mem_ops mtk_dma_contig_memops;
+#ifdef CONFIG_MTK_ION
+extern const struct vb2_mem_ops mtk_dma_contig_ion_memops;
+#endif
 
 #endif

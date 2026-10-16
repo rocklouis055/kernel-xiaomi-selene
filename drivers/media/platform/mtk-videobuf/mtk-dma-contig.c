@@ -16,6 +16,12 @@
 
 #include "mtk-dma-contig.h"
 
+#ifdef CONFIG_MTK_ION
+#include <ion.h>
+#include <mtk/mtk_ion.h>
+extern struct ion_device *g_ion_device;
+#endif
+
 static int mtk_secure_mode;
 static int debug;
 module_param(debug, int, 0644);
@@ -243,6 +249,141 @@ const struct vb2_mem_ops mtk_dma_contig_memops = {
 	.num_users	= vb2_dc_num_users,
 };
 EXPORT_SYMBOL_GPL(mtk_dma_contig_memops);
+
+#ifdef CONFIG_MTK_ION
+/*********************************************/
+/*      MMAP buffers backed by MTK ION       */
+/*********************************************/
+
+/*
+ * The VCU firmware daemon (vpud) only accepts buffers it can import into
+ * ION, so MMAP buffers are allocated from the multimedia ION heap and then
+ * used exactly like an imported DMABUF. The vb2_dc_buf comes first so the
+ * shared callbacks (cookie, vaddr, prepare, finish) work on it unchanged.
+ */
+struct mtk_ion_buf {
+	struct vb2_dc_buf	dc;
+	struct dma_buf		*dbuf;
+};
+
+static struct ion_client *mtk_dc_ion_client;
+static DEFINE_MUTEX(mtk_dc_ion_lock);
+
+static void *vb2_dc_ion_alloc(struct device *dev, unsigned long attrs,
+	unsigned long size, enum dma_data_direction dma_dir, gfp_t gfp_flags)
+{
+	struct mtk_ion_buf *buf;
+	struct ion_handle *handle;
+	struct dma_buf_attachment *dba;
+	struct dma_buf *dbuf;
+	int ret;
+
+	if (WARN_ON(!dev))
+		return ERR_PTR(-EINVAL);
+
+	mutex_lock(&mtk_dc_ion_lock);
+	if (!mtk_dc_ion_client && g_ion_device)
+		mtk_dc_ion_client = ion_client_create(g_ion_device,
+						      "mtk-dma-contig");
+	mutex_unlock(&mtk_dc_ion_lock);
+	if (IS_ERR_OR_NULL(mtk_dc_ion_client)) {
+		mtk_dc_ion_client = NULL;
+		return ERR_PTR(-ENODEV);
+	}
+
+	size = PAGE_ALIGN(size);
+	handle = ion_alloc(mtk_dc_ion_client, size, PAGE_SIZE,
+			   ION_HEAP_MULTIMEDIA_MASK, 0);
+	if (IS_ERR_OR_NULL(handle)) {
+		dprintk(CRITICAL, "ion alloc of %lu bytes failed\n", size);
+		return ERR_PTR(-ENOMEM);
+	}
+	dbuf = ion_share_dma_buf(mtk_dc_ion_client, handle);
+	/* the dma-buf keeps the ION buffer alive from here on */
+	ion_free(mtk_dc_ion_client, handle);
+	if (IS_ERR_OR_NULL(dbuf))
+		return ERR_PTR(-ENOMEM);
+
+	buf = kzalloc(sizeof(*buf), GFP_KERNEL);
+	if (!buf) {
+		dma_buf_put(dbuf);
+		return ERR_PTR(-ENOMEM);
+	}
+
+	dba = dma_buf_attach(dbuf, dev);
+	if (IS_ERR(dba)) {
+		ret = PTR_ERR(dba);
+		goto err_put;
+	}
+	buf->dbuf = dbuf;
+	buf->dc.dev = dev;
+	buf->dc.size = size;
+	buf->dc.dma_dir = dma_dir;
+	buf->dc.db_attach = dba;
+	atomic_set(&buf->dc.refcount, 1);
+
+	ret = vb2_dc_map_dmabuf(&buf->dc);
+	if (ret) {
+		dma_buf_detach(dbuf, dba);
+		goto err_put;
+	}
+	return buf;
+
+err_put:
+	dma_buf_put(dbuf);
+	kfree(buf);
+	return ERR_PTR(ret);
+}
+
+static void vb2_dc_ion_put(void *buf_priv)
+{
+	struct mtk_ion_buf *buf = buf_priv;
+
+	vb2_dc_unmap_dmabuf(&buf->dc);
+	dma_buf_detach(buf->dbuf, buf->dc.db_attach);
+	/* a user mapping or an exported fd still holds its own reference */
+	dma_buf_put(buf->dbuf);
+	kfree(buf);
+}
+
+static int vb2_dc_ion_mmap(void *buf_priv, struct vm_area_struct *vma)
+{
+	struct mtk_ion_buf *buf = buf_priv;
+
+	return dma_buf_mmap(buf->dbuf, vma, 0);
+}
+
+static struct dma_buf *vb2_dc_ion_get_dmabuf(void *buf_priv,
+					     unsigned long flags)
+{
+	struct mtk_ion_buf *buf = buf_priv;
+
+	get_dma_buf(buf->dbuf);
+	return buf->dbuf;
+}
+
+/* only dmabufs that were mapped by the CPU need syncing; ION handles it */
+static void vb2_dc_ion_nop(void *buf_priv)
+{
+}
+
+const struct vb2_mem_ops mtk_dma_contig_ion_memops = {
+	.alloc		= vb2_dc_ion_alloc,
+	.put		= vb2_dc_ion_put,
+	.get_dmabuf	= vb2_dc_ion_get_dmabuf,
+	.mmap		= vb2_dc_ion_mmap,
+	.cookie		= vb2_dc_cookie,
+	.vaddr		= vb2_dc_vaddr,
+	.prepare	= vb2_dc_ion_nop,
+	.finish		= vb2_dc_ion_nop,
+	.map_dmabuf	= vb2_dc_map_dmabuf,
+	.unmap_dmabuf	= vb2_dc_unmap_dmabuf,
+	.attach_dmabuf	= vb2_dc_attach_dmabuf,
+	.detach_dmabuf	= vb2_dc_detach_dmabuf,
+	.num_users	= vb2_dc_num_users,
+};
+EXPORT_SYMBOL_GPL(mtk_dma_contig_ion_memops);
+#endif
 
 /**
  * mtk_dma_contig_set_max_seg_size() - configure DMA max segment size

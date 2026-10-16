@@ -72,6 +72,8 @@ endif
 ccflags-y += -I$(srctree)/drivers/media/platform/mtk-vcodec
 ccflags-y += -I$(srctree)/drivers/media/platform/mtk-vcodec/$(MTK_PLATFORM)
 ccflags-y += -I$(srctree)/drivers/media/platform/mtk-videobuf
+# MediaTek's own vb2 allocator (ION-backed MMAP buffers, which vpud needs)
+ccflags-$(CONFIG_VB2_MEDIATEK_DMA) += -DCONFIG_VB2_MEDIATEK_DMA_CONTIG
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/smi
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/smi/$(MTK_PLATFORM)
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/smi/variant

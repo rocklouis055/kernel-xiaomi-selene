@@ -3015,7 +3015,11 @@ int mtk_vcodec_dec_queue_init(void *priv, struct vb2_queue *src_vq,
 	src_vq->buf_struct_size = sizeof(struct mtk_video_dec_buf);
 	src_vq->ops             = &mtk_vdec_vb2_ops;
 #ifdef CONFIG_VB2_MEDIATEK_DMA_CONTIG
+#ifdef CONFIG_MTK_ION
+	vdec_ion_dma_contig_memops = mtk_dma_contig_ion_memops;
+#else
 	vdec_ion_dma_contig_memops = mtk_dma_contig_memops;
+#endif
 	vdec_ion_dma_contig_memops.map_dmabuf = vdec_dc_ion_map_dmabuf;
 
 	src_vq->mem_ops         = &vdec_ion_dma_contig_memops;
