@@ -505,7 +505,9 @@ static int venc_set_param(unsigned long handle,
 			inst->vsi->config.frame_level_qp =
 				enc_prm->frame_level_qp;
 		}
+#if VENC_VCU_CONFIG_DUMMYNAL
 		inst->vsi->config.dummynal = enc_prm->dummynal;
+#endif
 #endif
 
 		if (enc_prm->color_desc) {

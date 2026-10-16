@@ -13,6 +13,13 @@
  * vpud understands the newer parameter set, so the donor layout is used.
  */
 #define VENC_VCU_ABI_LEGACY 0
+/*
+ * selene: the device's vpud reads venc_vsi.venc.venc_bs_va at 0x798, i.e. its
+ * venc_vcu_config is one u32 shorter than this driver's (216 vs 220 bytes,
+ * which shifts everything after it by 8 after alignment). Without this the
+ * encoder found no bitstream buffer ("pbs_buf is null in bs_mode 2").
+ */
+#define VENC_VCU_CONFIG_DUMMYNAL 0
 
 #include <linux/videodev2.h>
 #include "vcodec_ipi_msg.h"
@@ -428,7 +435,9 @@ struct venc_vcu_config {
 	__u32 frame_level_qp;
 	__u32 maxrefpnum;
 	__u32 maxrefbufFrameNum;
+#if VENC_VCU_CONFIG_DUMMYNAL
 	__u32 dummynal;
+#endif
 #endif
 };
 
