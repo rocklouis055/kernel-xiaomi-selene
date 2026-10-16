@@ -359,33 +359,29 @@ static void lcm_dfps_int(struct LCM_DSI_PARAMS *dsi)
 	struct dfps_info *dfps_params = dsi->dfps_params;
 
 	dsi->dfps_enable = 1;
-	dsi->dfps_default_fps = 6000;/*real fps * 100, to support float*/
+	dsi->dfps_default_fps = 9000;/*real fps * 100, to support float*/
 	dsi->dfps_def_vact_tim_fps = 9000;/*real vact timing fps * 100*/
 	/* traversing array must less than DFPS_LEVELS */
-	/* DPFS_LEVEL0 */
+	/* selene: 90 Hz is listed first (config 0) so the hardware composer starts
+	 * in 90 Hz and reports 90 Hz vsync timing to Mir/Lomiri; 60 Hz is config 1. */
+	/* DPFS_LEVEL0: 90 Hz */
 	dfps_params[0].level = DFPS_LEVEL0;
-	dfps_params[0].fps = 6000;/*real fps * 100, to support float*/
+	dfps_params[0].fps = 9000;/*real fps * 100, to support float*/
 	dfps_params[0].vact_timing_fps = 9000;/*real vact timing fps * 100*/
-	/* if mipi clock solution */
-	/* dfps_params[0].PLL_CLOCK = 574; */
+	/* dfps_params[0].PLL_CLOCK = 380; */
 	/* dfps_params[0].data_rate = xx; */
-	/* Huaqin add for HQ-148591 by jiangyue at 2021/10/27 start */
-	dfps_params[0].vertical_frontporch = 1250;
+	dfps_params[0].vertical_frontporch = 54;
 	dfps_params[0].vertical_frontporch_for_low_power = 2430;
-	/* Huaqin add for HQ-148591 by jiangyue at 2021/10/27 end */
-  
-	/* DPFS_LEVEL1 */
+
+	/* DPFS_LEVEL1: 60 Hz */
 	dfps_params[1].level = DFPS_LEVEL1;
-	dfps_params[1].fps = 9000;/*real fps * 100, to support float*/
+	dfps_params[1].fps = 6000;/*real fps * 100, to support float*/
 	dfps_params[1].vact_timing_fps = 9000;/*real vact timing fps * 100*/
-	/* if mipi clock solution */
-	/* dfps_params[1].PLL_CLOCK = 380; */
+	/* dfps_params[1].PLL_CLOCK = 574; */
 	/* dfps_params[1].data_rate = xx; */
-	dfps_params[1].vertical_frontporch = 54;
-	/* Huaqin modify for HQ-179522 by jiangyue at 2022/01/24 start */
+	dfps_params[1].vertical_frontporch = 1250;
 	dfps_params[1].vertical_frontporch_for_low_power = 2430;
-	/* Huaqin modify for HQ-179522 by jiangyue at 2022/01/24 end */
-  
+
 	dsi->dfps_num = 2;
 }
 #endif
