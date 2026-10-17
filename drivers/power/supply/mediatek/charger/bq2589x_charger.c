@@ -1077,10 +1077,22 @@ static void bq2589x_read_byte_work(struct work_struct *work)
 				ret = bq2589x_disable_hvdcp(bq);
 				pr_err("bq2589x:reset\n");
 			}else if(vbus_gd && vbus_stat == BQ2589X_VBUS_TYPE_SDP ) {
-				pr_err("foce dpdm ti\n");
-				bq2589x_force_dpdm(bq);
+				/*
+				 * selene: a USB host is detected reliably the
+				 * first time. Forcing DPDM again drops power-good
+				 * for a moment, the IRQ handler takes that as a
+				 * new insertion and resets the counters, and the
+				 * phone flaps between plugged and unplugged about
+				 * once a second for as long as it is connected.
+				 */
+				pr_err("sdp: no re-detection\n");
 			}else if(vbus_gd && vbus_stat == BQ2589X_VBUS_TYPE_UNKNOWN ) {
-				charger_detect_count++;
+				/*
+				 * selene: was charger_detect_count++, which the
+				 * decrement below cancelled, so retries ran to the
+				 * float limit (30, ~35 s of flapping). Now this
+				 * gives up after charger_detect_count retries.
+				 */
 				charger_float_count++;
 				if(charger_float_count <= 30){
 					bq2589x_force_dpdm(bq);
@@ -1533,12 +1545,27 @@ static int bq2589x_set_ivl(struct charger_device *chg_dev, u32 volt)
 
 }
 
+/*
+ * selene: input current cap (uA) on a standard USB host port (SDP). The Fire
+ * Stick's OTG port, fed through a Y-cable, sags to ~4.45 V at the usual
+ * 500 mA; power-good then drops every few seconds and the phone flaps between
+ * plugged and unplugged. 400 mA holds the line. Applied here, where every
+ * path that sets the input limit ends up (the charger core sets 500 mA on
+ * plug-in before its own selection runs). Wall chargers are not affected.
+ * 0 disables it; tunable in /sys/module/bq2589x_charger/parameters/.
+ */
+static int sdp_input_limit_ua = 400000;
+module_param(sdp_input_limit_ua, int, 0644);
+
 static int bq2589x_set_icl(struct charger_device *chg_dev, u32 curr)
 {
 	struct bq2589x *bq = dev_get_drvdata(&chg_dev->dev);
 	if(curr == 0) {
 		curr = 2000000;
     }
+	if (bq->chg_type == STANDARD_HOST && sdp_input_limit_ua > 0 &&
+	    curr > sdp_input_limit_ua)
+		curr = sdp_input_limit_ua;
 	pr_debug("indpm curr = %d\n", curr);
 
 	return bq2589x_set_input_current_limit(bq, curr / 1000);
