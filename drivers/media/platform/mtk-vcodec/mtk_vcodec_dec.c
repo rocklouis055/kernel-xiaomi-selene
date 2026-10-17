@@ -3,6 +3,8 @@
  * Copyright (c) 2019 MediaTek Inc.
  */
 
+#include <linux/dma-buf.h>
+#include <linux/fcntl.h>
 #include <media/v4l2-event.h>
 #include <media/v4l2-mem2mem.h>
 #include <media/videobuf2-dma-contig.h>
@@ -62,6 +64,18 @@ static void get_supported_format(struct mtk_vcodec_ctx *ctx)
 		}
 		for (i = 0; i < MTK_MAX_DEC_CODECS_SUPPORT; i++) {
 			if (mtk_video_formats[i].fourcc != 0 &&
+				mtk_video_formats[i].type == MTK_FMT_FRAME) {
+				default_cap_fmt_idx = i;
+				break;
+			}
+		}
+		/*
+		 * Default to linear NV12 when vpud offers it: the block formats
+		 * are only understood by MediaTek's own userspace, and generic
+		 * clients start from the default format.
+		 */
+		for (i = 0; i < MTK_MAX_DEC_CODECS_SUPPORT; i++) {
+			if (mtk_video_formats[i].fourcc == V4L2_PIX_FMT_NV12 &&
 				mtk_video_formats[i].type == MTK_FMT_FRAME) {
 				default_cap_fmt_idx = i;
 				break;
@@ -543,6 +557,29 @@ int mtk_vdec_put_fb(struct mtk_vcodec_ctx *ctx, int type)
 	return 0;
 }
 
+/*
+ * vpud only takes buffers as dma-buf fds it can import into ION. A dmabuf
+ * plane carries its dma-buf already; for an MMAP plane (ION-backed, see
+ * mtk_dma_contig_ion_memops) export one once and keep it with the buffer
+ * until vb2ops_vdec_buf_cleanup().
+ */
+static struct dma_buf *vdec_plane_dmabuf(struct vb2_buffer *vb, unsigned int p)
+{
+	struct mtk_video_dec_buf *buf = container_of(to_vb2_v4l2_buffer(vb),
+					struct mtk_video_dec_buf, vb);
+	struct dma_buf *dbuf;
+
+	if (vb->planes[p].dbuf || vb->memory != VB2_MEMORY_MMAP ||
+	    p >= VIDEO_MAX_PLANES || !vb->vb2_queue->mem_ops->get_dmabuf)
+		return vb->planes[p].dbuf;
+	if (!buf->exp_dmabuf[p]) {
+		dbuf = vb->vb2_queue->mem_ops->get_dmabuf(
+				vb->planes[p].mem_priv, O_RDWR);
+		buf->exp_dmabuf[p] = IS_ERR_OR_NULL(dbuf) ? NULL : dbuf;
+	}
+	return buf->exp_dmabuf[p];
+}
+
 static void mtk_vdec_worker(struct work_struct *work)
 {
 	struct mtk_vcodec_ctx *ctx = container_of(work, struct mtk_vcodec_ctx,
@@ -618,12 +655,12 @@ static void mtk_vdec_worker(struct work_struct *work)
 #endif
 			pfb->fb_base[i].size = ctx->picinfo.fb_sz[i];
 			pfb->fb_base[i].length = dst_buf->planes[i].length;
-			pfb->fb_base[i].dmabuf = dst_buf->planes[i].dbuf;
+			pfb->fb_base[i].dmabuf = vdec_plane_dmabuf(dst_buf, i);
 
 			if (dst_buf_info->used == false) {
-				get_file(dst_buf->planes[i].dbuf->file);
+				get_file(pfb->fb_base[i].dmabuf->file);
 				mtk_v4l2_debug(4, "[Ref cnt] id=%d Ref get dma %p", dst_buf->index,
-					dst_buf->planes[i].dbuf);
+					pfb->fb_base[i].dmabuf);
 			}
 		}
 		pfb->status = 0;
@@ -669,7 +706,7 @@ static void mtk_vdec_worker(struct work_struct *work)
 		0 : vb2_dma_contig_plane_dma_addr(src_buf, 0);
 	buf->size = (size_t)src_buf->planes[0].bytesused;
 	buf->length = (size_t)src_buf->planes[0].length;
-	buf->dmabuf = src_buf->planes[0].dbuf;
+	buf->dmabuf = vdec_plane_dmabuf(src_buf, 0);
 	buf->flags = src_vb2_v4l2->flags;
 	buf->index = src_buf->index;
 
@@ -1216,7 +1253,11 @@ static int vidioc_vdec_qbuf(struct file *file, void *priv,
 				ctx->input_max_ts);
 		}
 	} else {
-		if (buf->reserved == 0xFFFFFFFF)
+		/*
+		 * MTK clients pass a "general buffer" fd in the reserved field;
+		 * everyone else leaves it 0, which is never a dma-buf.
+		 */
+		if (buf->reserved == 0xFFFFFFFF || buf->reserved == 0)
 			mtkbuf->general_user_fd = -1;
 		else
 			mtkbuf->general_user_fd = (int)buf->reserved;
@@ -1467,12 +1508,13 @@ static int vidioc_try_fmt_vid_cap_mplane(struct file *file, void *priv,
 	struct mtk_video_fmt *fmt;
 	struct mtk_vcodec_ctx *ctx = fh_to_ctx(priv);
 
+	/*
+	 * Refuse a frame format we can't produce instead of quietly
+	 * substituting another: clients such as FFmpeg take a successful
+	 * TRY_FMT as "this layout is what you'll get", and only fall back to
+	 * enumerating the supported formats when it fails.
+	 */
 	fmt = mtk_vdec_find_format(ctx, f, MTK_FMT_FRAME);
-	if (!fmt && default_cap_fmt_idx < MTK_MAX_DEC_CODECS_SUPPORT) {
-		f->fmt.pix.pixelformat =
-			mtk_video_formats[default_cap_fmt_idx].fourcc;
-		fmt = mtk_vdec_find_format(ctx, f, MTK_FMT_FRAME);
-	}
 	if (!fmt)
 		return -EINVAL;
 
@@ -1508,6 +1550,7 @@ static int vidioc_vdec_g_selection(struct file *file, void *priv,
 {
 	struct mtk_vcodec_ctx *ctx = fh_to_ctx(priv);
 	struct mtk_q_data *q_data;
+	struct v4l2_crop crop;
 
 	if (s->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
 		return -EINVAL;
@@ -1531,13 +1574,16 @@ static int vidioc_vdec_g_selection(struct file *file, void *priv,
 		break;
 	case V4L2_SEL_TGT_COMPOSE:
 	case V4L2_SEL_TGT_CROP:
-		if (vdec_if_get_param(ctx, GET_PARAM_CROP_INFO, &(s->r))) {
+		/* GET_PARAM_CROP_INFO fills a struct v4l2_crop, not a rect */
+		memset(&crop, 0, sizeof(crop));
+		if (vdec_if_get_param(ctx, GET_PARAM_CROP_INFO, &crop)) {
 			/* set to default value if header info not ready yet*/
 			s->r.left = 0;
 			s->r.top = 0;
 			s->r.width = q_data->visible_width;
 			s->r.height = q_data->visible_height;
-		}
+		} else
+			s->r = crop.c;
 		break;
 	default:
 		return -EINVAL;
@@ -2176,7 +2222,7 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 	src_mem->dma_addr = vb2_dma_contig_plane_dma_addr(src_buf, 0);
 	src_mem->size = (size_t)src_buf->planes[0].bytesused;
 	src_mem->length = (size_t)src_buf->planes[0].length;
-	src_mem->dmabuf = src_buf->planes[0].dbuf;
+	src_mem->dmabuf = vdec_plane_dmabuf(src_buf, 0);
 	src_mem->flags = vb2_v4l2->flags;
 	src_mem->index = vb->index;
 
@@ -2444,6 +2490,13 @@ static void vb2ops_vdec_buf_cleanup(struct vb2_buffer *vb)
 			}
 		}
 		mutex_unlock(&ctx->buf_lock);
+	}
+
+	for (i = 0; i < VIDEO_MAX_PLANES; i++) {
+		if (buf->exp_dmabuf[i]) {
+			dma_buf_put(buf->exp_dmabuf[i]);
+			buf->exp_dmabuf[i] = NULL;
+		}
 	}
 }
 
