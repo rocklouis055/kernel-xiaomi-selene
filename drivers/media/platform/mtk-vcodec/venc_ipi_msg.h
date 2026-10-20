@@ -14,12 +14,14 @@
  */
 #define VENC_VCU_ABI_LEGACY 0
 /*
- * selene: the device's vpud reads venc_vsi.venc.venc_bs_va at 0x798, i.e. its
- * venc_vcu_config is one u32 shorter than this driver's (216 vs 220 bytes,
- * which shifts everything after it by 8 after alignment). Without this the
- * encoder found no bitstream buffer ("pbs_buf is null in bs_mode 2").
+ * selene: the device's vpud has no svp_is_hal_secure_handle in
+ * venc_vcu_config (it reads tsvc at 0xb4, max_qp at 0xb8 ... dummynal at
+ * 0xd4; 216 bytes, venc_bs_va at 0x798). With the field present every
+ * member from tsvc on was shifted: vpud took tsvc (0) as max_qp and capped
+ * the QP at 0, so the encoder ignored the bitrate (1080p came out at
+ * 100-150 Mbit/s, 1440p at up to 550 Mbit/s).
  */
-#define VENC_VCU_CONFIG_DUMMYNAL 0
+#define VENC_VCU_CONFIG_SVP_HAL_HANDLE 0
 
 #include <linux/videodev2.h>
 #include "vcodec_ipi_msg.h"
@@ -423,7 +425,7 @@ struct venc_vcu_config {
 	__u32 p_qp;
 	__u32 b_qp;
 	__u32 svp_mode;
-#if !VENC_VCU_ABI_LEGACY
+#if !VENC_VCU_ABI_LEGACY && VENC_VCU_CONFIG_SVP_HAL_HANDLE
 	__u32 svp_is_hal_secure_handle;
 #endif
 	__u32 tsvc;
@@ -435,9 +437,7 @@ struct venc_vcu_config {
 	__u32 frame_level_qp;
 	__u32 maxrefpnum;
 	__u32 maxrefbufFrameNum;
-#if VENC_VCU_CONFIG_DUMMYNAL
 	__u32 dummynal;
-#endif
 #endif
 };
 

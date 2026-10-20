@@ -224,6 +224,12 @@ static int venc_init(struct mtk_vcodec_ctx *ctx, unsigned long *handle)
 	struct venc_inst *inst;
 	u32 fourcc = ctx->q_data[MTK_Q_DATA_DST].fmt->fourcc;
 
+	/* selene: offsets the device's vpud reads (see venc_ipi_msg.h) */
+	BUILD_BUG_ON(offsetof(struct venc_vcu_config, tsvc) != 0xb4);
+	BUILD_BUG_ON(offsetof(struct venc_vcu_config, max_qp) != 0xb8);
+	BUILD_BUG_ON(offsetof(struct venc_vcu_config, dummynal) != 0xd4);
+	BUILD_BUG_ON(sizeof(struct venc_vcu_config) != 216);
+
 	inst = kzalloc(sizeof(*inst), GFP_KERNEL);
 	if (!inst) {
 		*handle = (unsigned long)NULL;
@@ -505,9 +511,7 @@ static int venc_set_param(unsigned long handle,
 			inst->vsi->config.frame_level_qp =
 				enc_prm->frame_level_qp;
 		}
-#if VENC_VCU_CONFIG_DUMMYNAL
 		inst->vsi->config.dummynal = enc_prm->dummynal;
-#endif
 #endif
 
 		if (enc_prm->color_desc) {
