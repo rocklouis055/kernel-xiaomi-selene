@@ -2908,14 +2908,15 @@ static int32_t nvt_ts_resume(struct device *dev)
 	} else {
 		nvt_check_fw_reset_state(RESET_STATE_REK);
 	}
-	/* Huaqin modify for TP GESTURE by zhangjiangbin at 2021/07/13 start */
-#if WAKEUP_GESTURE
-	if (nvt_gesture_flag == false)
-		nvt_irq_enable(true);
-#else
+	/*
+	 * selene: always re-enable the IRQ. Suspend disables it when gestures
+	 * are off; if gestures were switched on while suspended, the old
+	 * "only when gestures are off" check here left it disabled for good
+	 * (touch, and double tap to wake, dead until gestures were switched
+	 * off and the screen cycled). nvt_irq_enable() tracks the state, so
+	 * this is a no-op when gestures kept the IRQ enabled through suspend.
+	 */
 	nvt_irq_enable(true);
-#endif
-	/* Huaqin modify for TP GESTURE by zhangjiangbin at 2021/07/13 end */
 	
 #ifdef CONFIG_TOUCHSCREEN_NT36672C_ESD_PROTECT
 	nvt_esd_check_enable(false);
@@ -2975,14 +2976,15 @@ int32_t nvt_ts_tp_resume(void)
 	} else {
 		nvt_check_fw_reset_state(RESET_STATE_REK);
 	}
-	/* Huaqin modify for TP GESTURE by zhangjiangbin at 2021/07/13 start */
-#if WAKEUP_GESTURE
-	if (nvt_gesture_flag == false)
-		nvt_irq_enable(true);
-#else
+	/*
+	 * selene: always re-enable the IRQ. Suspend disables it when gestures
+	 * are off; if gestures were switched on while suspended, the old
+	 * "only when gestures are off" check here left it disabled for good
+	 * (touch, and double tap to wake, dead until gestures were switched
+	 * off and the screen cycled). nvt_irq_enable() tracks the state, so
+	 * this is a no-op when gestures kept the IRQ enabled through suspend.
+	 */
 	nvt_irq_enable(true);
-#endif
-	/* Huaqin modify for TP GESTURE by zhangjiangbin at 2021/07/13 end */
 #ifdef CONFIG_TOUCHSCREEN_NT36672C_ESD_PROTECT
 	nvt_esd_check_enable(false);
 	queue_delayed_work(nvt_esd_check_wq, &nvt_esd_check_work,

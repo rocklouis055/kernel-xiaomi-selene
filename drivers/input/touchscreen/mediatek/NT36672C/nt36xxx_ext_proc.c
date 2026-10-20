@@ -450,10 +450,9 @@ static ssize_t nvt_gesture_mode_write(struct file *file, const char __user *buff
 	if (count > 0) {
 		if (get_user(input, buffer))
 			return -EFAULT;
-		if (input != '5')
-			nvt_gesture_flag = false;
-		else
-			nvt_gesture_flag = true;
+		/* selene: '5' is what MIUI writes; also take '1', which is what
+		 * reading the node returns (repowerd compares the two) */
+		nvt_gesture_flag = (input == '5' || input == '1');
 	}
 
 	return count;
